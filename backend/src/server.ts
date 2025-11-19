@@ -12,6 +12,13 @@ app.get('/ping', (req, res) => {
 import multer from 'multer';
 import Raindrop from '@liquidmetal-ai/lm-raindrop';
 import fs from 'fs';
+import {
+    MOCK_UPLOAD_RESPONSE,
+    MOCK_ORCHESTRATION_RESPONSE,
+    MOCK_REFERRALS_LIST,
+    MOCK_REFERRAL_DETAILS,
+    MOCK_REFERRAL_LOGS
+} from './api/mockData.js';
 
 const upload = multer({ dest: 'uploads/' });
 const client = new Raindrop({ apiKey: process.env.RAINDROP_API_KEY || 'mock-key' });
@@ -27,75 +34,71 @@ app.post('/upload', upload.single('file'), async (req, res) => {
         console.log(`File uploaded: ${req.file.originalname} (${req.file.size} bytes)`);
         console.log(`Saved to: ${req.file.path}`);
 
-        res.status(200).json({ message: 'File uploaded successfully', filename: req.file.originalname });
+        res.status(200).json(MOCK_UPLOAD_RESPONSE);
     } catch (error) {
         console.error('Upload error:', error);
-        console.error('Error details:', error instanceof Error ? error.message : String(error));
-        console.error('Stack:', error instanceof Error ? error.stack : 'No stack trace');
-        res.status(500).send('Upload failed');
+        res.status(500).json({
+            success: false,
+            error: {
+                code: "UPLOAD_FAILED",
+                message: "Failed to process document",
+                statusCode: 500
+            }
+        });
     }
-});
-
-app.post('/extract', async (req, res) => {
-    const { filename } = req.body;
-    if (!filename) {
-        return res.status(400).send('Filename is required');
-    }
-
-    // Mock AI extraction
-    const extractedData = {
-        patientName: 'John Doe',
-        dateOfBirth: '1980-01-01',
-        referralReason: 'Cardiology consultation',
-        insuranceProvider: 'BlueCross',
-    };
-
-    res.status(200).json(extractedData);
 });
 
 app.post('/orchestrate', async (req, res) => {
-    const { patientName, referralReason, insuranceProvider } = req.body;
-    if (!patientName || !referralReason) {
-        return res.status(400).send('Missing required fields');
+    try {
+        // const { documentId, referralData } = req.body;
+        res.status(200).json(MOCK_ORCHESTRATION_RESPONSE);
+    } catch (error) {
+        console.error('Orchestrate error:', error);
+        res.status(500).json({
+            success: false,
+            error: {
+                code: "ORCHESTRATION_FAILED",
+                message: "Failed to start orchestration",
+                statusCode: 500
+            }
+        });
     }
-
-    // Mock Specialist Inference
-    let specialist = 'General Practitioner';
-    if (referralReason.toLowerCase().includes('cardio')) {
-        specialist = 'Cardiologist';
-    } else if (referralReason.toLowerCase().includes('derma')) {
-        specialist = 'Dermatologist';
-    }
-
-    // Mock Insurance Check
-    const insuranceStatus = insuranceProvider === 'BlueCross' ? 'Approved' : 'Pending';
-
-    // Mock Schedule Lookup (SmartSQL)
-    const availableSlots = [
-        '2025-11-20T10:00:00Z',
-        '2025-11-21T14:00:00Z',
-    ];
-
-    res.status(200).json({
-        specialist,
-        insuranceStatus,
-        availableSlots,
-    });
 });
 
-app.post('/confirm', async (req, res) => {
-    const { patientName, slot } = req.body;
-    if (!patientName || !slot) {
-        return res.status(400).send('Missing required fields');
+app.get('/referrals', (req, res) => {
+    res.status(200).json(MOCK_REFERRALS_LIST);
+});
+
+app.get('/referral/:id', (req, res) => {
+    const { id } = req.params;
+    if (id === 'ref-001') {
+        res.status(200).json(MOCK_REFERRAL_DETAILS);
+    } else {
+        res.status(404).json({
+            success: false,
+            error: {
+                code: "REFERRAL_NOT_FOUND",
+                message: `Referral with ID '${id}' not found`,
+                statusCode: 404
+            }
+        });
     }
+});
 
-    // Mock SMS/Email dispatch
-    console.log(`Sending confirmation to ${patientName} for slot ${slot}`);
-
-    res.status(200).json({
-        message: 'Confirmation sent successfully',
-        status: 'Sent',
-    });
+app.get('/referral/:id/logs', (req, res) => {
+    const { id } = req.params;
+    if (id === 'ref-001') {
+        res.status(200).json(MOCK_REFERRAL_LOGS);
+    } else {
+        res.status(404).json({
+            success: false,
+            error: {
+                code: "REFERRAL_NOT_FOUND",
+                message: `Referral with ID '${id}' not found`,
+                statusCode: 404
+            }
+        });
+    }
 });
 
 // ESM replacement for require.main === module

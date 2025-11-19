@@ -1,6 +1,7 @@
 import { Service } from '@liquidmetal-ai/raindrop-framework';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
+import { MOCK_UPLOAD_RESPONSE, MOCK_ORCHESTRATION_RESPONSE, MOCK_REFERRALS_LIST, MOCK_REFERRAL_DETAILS, MOCK_REFERRAL_LOGS } from './mockData';
 // Create Hono app with middleware
 const app = new Hono();
 // Add request logging middleware
@@ -34,14 +35,18 @@ app.post('/upload', async (c) => {
                 uploadedAt: new Date().toISOString()
             }
         });
-        return c.json({
-            message: 'File uploaded successfully',
-            filename: file.name
-        });
+        return c.json(MOCK_UPLOAD_RESPONSE);
     }
     catch (error) {
         console.error('Upload error:', error);
-        return c.text('Upload failed', 500);
+        return c.json({
+            success: false,
+            error: {
+                code: "UPLOAD_FAILED",
+                message: "Failed to process document",
+                statusCode: 500
+            }
+        }, 500);
     }
 });
 // AI Extraction endpoint (mocked for now)
@@ -70,35 +75,55 @@ app.post('/extract', async (c) => {
 app.post('/orchestrate', async (c) => {
     try {
         const body = await c.req.json();
-        const { patientName, referralReason, insuranceProvider } = body;
-        if (!patientName || !referralReason) {
-            return c.text('Missing required fields', 400);
-        }
-        // Mock Specialist Inference
-        let specialist = 'General Practitioner';
-        if (referralReason.toLowerCase().includes('cardio')) {
-            specialist = 'Cardiologist';
-        }
-        else if (referralReason.toLowerCase().includes('derma')) {
-            specialist = 'Dermatologist';
-        }
-        // Mock Insurance Check
-        const insuranceStatus = insuranceProvider === 'BlueCross' ? 'Approved' : 'Pending';
-        // Mock Schedule Lookup
-        const availableSlots = [
-            '2025-11-20T10:00:00Z',
-            '2025-11-21T14:00:00Z',
-        ];
-        return c.json({
-            specialist,
-            insuranceStatus,
-            availableSlots,
-        });
+        // In a real app, we would use the body data to trigger the workflow
+        // const { documentId, referralData } = body;
+        return c.json(MOCK_ORCHESTRATION_RESPONSE);
     }
     catch (error) {
         console.error('Orchestrate error:', error);
-        return c.text('Orchestration failed', 500);
+        return c.json({
+            success: false,
+            error: {
+                code: "ORCHESTRATION_FAILED",
+                message: "Failed to start orchestration",
+                statusCode: 500
+            }
+        }, 500);
     }
+});
+// Get all referrals
+app.get('/referrals', (c) => {
+    return c.json(MOCK_REFERRALS_LIST);
+});
+// Get referral details
+app.get('/referral/:id', (c) => {
+    const id = c.req.param('id');
+    if (id === 'ref-001') {
+        return c.json(MOCK_REFERRAL_DETAILS);
+    }
+    return c.json({
+        success: false,
+        error: {
+            code: "REFERRAL_NOT_FOUND",
+            message: `Referral with ID '${id}' not found`,
+            statusCode: 404
+        }
+    }, 404);
+});
+// Get referral logs
+app.get('/referral/:id/logs', (c) => {
+    const id = c.req.param('id');
+    if (id === 'ref-001') {
+        return c.json(MOCK_REFERRAL_LOGS);
+    }
+    return c.json({
+        success: false,
+        error: {
+            code: "REFERRAL_NOT_FOUND",
+            message: `Referral with ID '${id}' not found`,
+            statusCode: 404
+        }
+    }, 404);
 });
 // Patient Confirmation endpoint
 app.post('/confirm', async (c) => {
