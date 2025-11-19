@@ -12,6 +12,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@liquidmetal-ai/lm-raindrop": "^0.6.43",
     "express": "^5.1.0"
   },
   "devDependencies": {
