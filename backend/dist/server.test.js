@@ -1,12 +1,16 @@
+import { describe, it, expect, vi } from 'vitest';
 import request from 'supertest';
 import app from './server';
+import { MOCK_UPLOAD_RESPONSE, MOCK_ORCHESTRATION_RESPONSE, MOCK_REFERRALS_LIST, MOCK_REFERRAL_DETAILS, MOCK_REFERRAL_LOGS } from './api/mockData';
 // Mock Raindrop SDK
-jest.mock('@liquidmetal-ai/lm-raindrop', () => {
-    return jest.fn().mockImplementation(() => ({
-        object: {
-            upload: jest.fn().mockResolvedValue({ bucket: 'referral-docs' }),
-        },
-    }));
+vi.mock('@liquidmetal-ai/lm-raindrop', () => {
+    return {
+        default: class {
+            object = {
+                upload: vi.fn().mockResolvedValue({ bucket: 'referral-docs' }),
+            };
+        }
+    };
 });
 describe('GET /ping', () => {
     it('should return pong', async () => {
@@ -16,30 +20,15 @@ describe('GET /ping', () => {
     });
 });
 describe('POST /upload', () => {
-    it('should upload a file', async () => {
+    it('should upload a file and return extracted data', async () => {
         const res = await request(app)
             .post('/upload')
-            .attach('file', Buffer.from('test content'), 'test.txt');
+            .attach('file', Buffer.from('test content'), 'test.pdf');
         expect(res.status).toBe(200);
-        expect(res.body.message).toBe('File uploaded successfully');
-        expect(res.body.filename).toBe('test.txt');
+        expect(res.body).toEqual(MOCK_UPLOAD_RESPONSE);
     });
     it('should return 400 if no file uploaded', async () => {
         const res = await request(app).post('/upload');
-        expect(res.status).toBe(400);
-    });
-});
-describe('POST /extract', () => {
-    it('should return extracted data', async () => {
-        const res = await request(app)
-            .post('/extract')
-            .send({ filename: 'test.txt' });
-        expect(res.status).toBe(200);
-        expect(res.body).toHaveProperty('patientName', 'John Doe');
-        expect(res.body).toHaveProperty('referralReason');
-    });
-    it('should return 400 if no filename provided', async () => {
-        const res = await request(app).post('/extract').send({});
         expect(res.status).toBe(400);
     });
 });
@@ -48,34 +37,41 @@ describe('POST /orchestrate', () => {
         const res = await request(app)
             .post('/orchestrate')
             .send({
-            patientName: 'John Doe',
-            referralReason: 'Cardiology consultation',
-            insuranceProvider: 'BlueCross',
+            documentId: 'doc-123',
+            referralData: {}
         });
         expect(res.status).toBe(200);
-        expect(res.body.specialist).toBe('Cardiologist');
-        expect(res.body.insuranceStatus).toBe('Approved');
-        expect(res.body.availableSlots).toHaveLength(2);
-    });
-    it('should return 400 if missing fields', async () => {
-        const res = await request(app).post('/orchestrate').send({});
-        expect(res.status).toBe(400);
+        expect(res.body).toEqual(MOCK_ORCHESTRATION_RESPONSE);
     });
 });
-describe('POST /confirm', () => {
-    it('should send confirmation', async () => {
-        const res = await request(app)
-            .post('/confirm')
-            .send({
-            patientName: 'John Doe',
-            slot: '2025-11-20T10:00:00Z',
-        });
+describe('GET /referrals', () => {
+    it('should return list of referrals', async () => {
+        const res = await request(app).get('/referrals');
         expect(res.status).toBe(200);
-        expect(res.body.message).toBe('Confirmation sent successfully');
-        expect(res.body.status).toBe('Sent');
+        expect(res.body).toEqual(MOCK_REFERRALS_LIST);
     });
-    it('should return 400 if missing fields', async () => {
-        const res = await request(app).post('/confirm').send({});
-        expect(res.status).toBe(400);
+});
+describe('GET /referral/:id', () => {
+    it('should return referral details for valid ID', async () => {
+        const res = await request(app).get('/referral/ref-001');
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual(MOCK_REFERRAL_DETAILS);
+    });
+    it('should return 404 for invalid ID', async () => {
+        const res = await request(app).get('/referral/invalid-id');
+        expect(res.status).toBe(404);
+        expect(res.body.success).toBe(false);
+        expect(res.body.error.code).toBe('REFERRAL_NOT_FOUND');
+    });
+});
+describe('GET /referral/:id/logs', () => {
+    it('should return referral logs for valid ID', async () => {
+        const res = await request(app).get('/referral/ref-001/logs');
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual(MOCK_REFERRAL_LOGS);
+    });
+    it('should return 404 for invalid ID', async () => {
+        const res = await request(app).get('/referral/invalid-id/logs');
+        expect(res.status).toBe(404);
     });
 });
