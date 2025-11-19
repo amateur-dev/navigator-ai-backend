@@ -1,165 +1,138 @@
 import { Service } from '@liquidmetal-ai/raindrop-framework';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
-import { QueueSendOptions } from '@liquidmetal-ai/raindrop-framework';
-import { KvCachePutOptions, KvCacheGetOptions } from '@liquidmetal-ai/raindrop-framework';
-import { BucketPutOptions, BucketListOptions } from '@liquidmetal-ai/raindrop-framework';
-import { Env } from './raindrop.gen';
-
 // Create Hono app with middleware
-const app = new Hono<{ Bindings: Env }>();
-
+const app = new Hono();
 // Add request logging middleware
 app.use('*', logger());
-
 // Health check endpoint
 app.get('/health', (c) => {
-  return c.json({ status: 'ok', timestamp: new Date().toISOString() });
+    return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-
 // === Navigator-AI Backend Endpoints ===
-
 // Ping endpoint
 app.get('/ping', (c) => {
-  return c.text('pong');
+    return c.text('pong');
 });
-
 // File upload endpoint
 app.post('/upload', async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const file = formData.get('file') as File;
-
-    if (!file) {
-      return c.text('No file uploaded', 400);
+    try {
+        const formData = await c.req.formData();
+        const file = formData.get('file');
+        if (!file) {
+            return c.text('No file uploaded', 400);
+        }
+        // Upload to SmartBucket (referral-docs)
+        const smartbucket = c.env.REFERRAL_DOCS;
+        const arrayBuffer = await file.arrayBuffer();
+        await smartbucket.put(file.name, new Uint8Array(arrayBuffer), {
+            httpMetadata: {
+                contentType: file.type || 'application/pdf',
+            },
+            customMetadata: {
+                originalName: file.name,
+                uploadedAt: new Date().toISOString()
+            }
+        });
+        return c.json({
+            message: 'File uploaded successfully',
+            filename: file.name
+        });
     }
-
-    // Upload to SmartBucket (referral-docs)
-    const smartbucket = c.env.REFERRAL_DOCS;
-    const arrayBuffer = await file.arrayBuffer();
-
-    await smartbucket.put(file.name, new Uint8Array(arrayBuffer), {
-      httpMetadata: {
-        contentType: file.type || 'application/pdf',
-      },
-      customMetadata: {
-        originalName: file.name,
-        uploadedAt: new Date().toISOString()
-      }
-    });
-
-    return c.json({
-      message: 'File uploaded successfully',
-      filename: file.name
-    });
-  } catch (error) {
-    console.error('Upload error:', error);
-    return c.text('Upload failed', 500);
-  }
+    catch (error) {
+        console.error('Upload error:', error);
+        return c.text('Upload failed', 500);
+    }
 });
-
 // AI Extraction endpoint (mocked for now)
 app.post('/extract', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { filename } = body;
-
-    if (!filename) {
-      return c.text('Filename is required', 400);
+    try {
+        const body = await c.req.json();
+        const { filename } = body;
+        if (!filename) {
+            return c.text('Filename is required', 400);
+        }
+        // Mock AI extraction
+        const extractedData = {
+            patientName: 'John Doe',
+            dateOfBirth: '1980-01-01',
+            referralReason: 'Cardiology consultation',
+            insuranceProvider: 'BlueCross',
+        };
+        return c.json(extractedData);
     }
-
-    // Mock AI extraction
-    const extractedData = {
-      patientName: 'John Doe',
-      dateOfBirth: '1980-01-01',
-      referralReason: 'Cardiology consultation',
-      insuranceProvider: 'BlueCross',
-    };
-
-    return c.json(extractedData);
-  } catch (error) {
-    console.error('Extract error:', error);
-    return c.text('Extraction failed', 500);
-  }
+    catch (error) {
+        console.error('Extract error:', error);
+        return c.text('Extraction failed', 500);
+    }
 });
-
 // Workflow Orchestration endpoint
 app.post('/orchestrate', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { patientName, referralReason, insuranceProvider } = body;
-
-    if (!patientName || !referralReason) {
-      return c.text('Missing required fields', 400);
+    try {
+        const body = await c.req.json();
+        const { patientName, referralReason, insuranceProvider } = body;
+        if (!patientName || !referralReason) {
+            return c.text('Missing required fields', 400);
+        }
+        // Mock Specialist Inference
+        let specialist = 'General Practitioner';
+        if (referralReason.toLowerCase().includes('cardio')) {
+            specialist = 'Cardiologist';
+        }
+        else if (referralReason.toLowerCase().includes('derma')) {
+            specialist = 'Dermatologist';
+        }
+        // Mock Insurance Check
+        const insuranceStatus = insuranceProvider === 'BlueCross' ? 'Approved' : 'Pending';
+        // Mock Schedule Lookup
+        const availableSlots = [
+            '2025-11-20T10:00:00Z',
+            '2025-11-21T14:00:00Z',
+        ];
+        return c.json({
+            specialist,
+            insuranceStatus,
+            availableSlots,
+        });
     }
-
-    // Mock Specialist Inference
-    let specialist = 'General Practitioner';
-    if (referralReason.toLowerCase().includes('cardio')) {
-      specialist = 'Cardiologist';
-    } else if (referralReason.toLowerCase().includes('derma')) {
-      specialist = 'Dermatologist';
+    catch (error) {
+        console.error('Orchestrate error:', error);
+        return c.text('Orchestration failed', 500);
     }
-
-    // Mock Insurance Check
-    const insuranceStatus = insuranceProvider === 'BlueCross' ? 'Approved' : 'Pending';
-
-    // Mock Schedule Lookup
-    const availableSlots = [
-      '2025-11-20T10:00:00Z',
-      '2025-11-21T14:00:00Z',
-    ];
-
-    return c.json({
-      specialist,
-      insuranceStatus,
-      availableSlots,
-    });
-  } catch (error) {
-    console.error('Orchestrate error:', error);
-    return c.text('Orchestration failed', 500);
-  }
 });
-
 // Patient Confirmation endpoint
 app.post('/confirm', async (c) => {
-  try {
-    const body = await c.req.json();
-    const { patientName, slot } = body;
-
-    if (!patientName || !slot) {
-      return c.text('Missing required fields', 400);
+    try {
+        const body = await c.req.json();
+        const { patientName, slot } = body;
+        if (!patientName || !slot) {
+            return c.text('Missing required fields', 400);
+        }
+        // Mock SMS/Email dispatch
+        console.log(`Sending confirmation to ${patientName} for slot ${slot}`);
+        return c.json({
+            message: 'Confirmation sent successfully',
+            status: 'Sent',
+        });
     }
-
-    // Mock SMS/Email dispatch
-    console.log(`Sending confirmation to ${patientName} for slot ${slot}`);
-
-    return c.json({
-      message: 'Confirmation sent successfully',
-      status: 'Sent',
-    });
-  } catch (error) {
-    console.error('Confirm error:', error);
-    return c.text('Confirmation failed', 500);
-  }
+    catch (error) {
+        console.error('Confirm error:', error);
+        return c.text('Confirmation failed', 500);
+    }
 });
-
 // === Basic API Routes ===
 app.get('/api/hello', (c) => {
-  return c.json({ message: 'Hello from Hono!' });
+    return c.json({ message: 'Hello from Hono!' });
 });
-
 app.get('/api/hello/:name', (c) => {
-  const name = c.req.param('name');
-  return c.json({ message: `Hello, ${name}!` });
+    const name = c.req.param('name');
+    return c.json({ message: `Hello, ${name}!` });
 });
-
 // Example POST endpoint
 app.post('/api/echo', async (c) => {
-  const body = await c.req.json();
-  return c.json({ received: body });
+    const body = await c.req.json();
+    return c.json({ received: body });
 });
-
 // === RPC Examples: Service calling Actor ===
 // Example: Call an actor method
 /*
@@ -193,7 +166,6 @@ app.post('/api/actor-call', async (c) => {
   }
 });
 */
-
 // Example: Get actor state
 /*
 app.get('/api/actor-state/:actorName', async (c) => {
@@ -221,7 +193,6 @@ app.get('/api/actor-state/:actorName', async (c) => {
   }
 });
 */
-
 // === SmartBucket Examples ===
 // Example: Upload file to SmartBucket
 /*
@@ -268,7 +239,6 @@ app.post('/api/upload', async (c) => {
   }
 });
 */
-
 // Example: Get file from SmartBucket
 /*
 app.get('/api/file/:filename', async (c) => {
@@ -300,7 +270,6 @@ app.get('/api/file/:filename', async (c) => {
   }
 });
 */
-
 // Example: Search SmartBucket documents
 /*
 app.post('/api/search', async (c) => {
@@ -360,7 +329,6 @@ app.post('/api/search', async (c) => {
   }
 });
 */
-
 // Example: Chunk search for finding specific sections
 /*
 app.post('/api/chunk-search', async (c) => {
@@ -393,7 +361,6 @@ app.post('/api/chunk-search', async (c) => {
   }
 });
 */
-
 // Example: Document chat/Q&A
 /*
 app.post('/api/document-chat', async (c) => {
@@ -428,7 +395,6 @@ app.post('/api/document-chat', async (c) => {
   }
 });
 */
-
 // Example: List objects in bucket
 /*
 app.get('/api/list', async (c) => {
@@ -465,7 +431,6 @@ app.get('/api/list', async (c) => {
   }
 });
 */
-
 // === KV Cache Examples ===
 // Example: Store data in KV cache
 /*
@@ -499,7 +464,6 @@ app.post('/api/cache', async (c) => {
   }
 });
 */
-
 // Example: Get data from KV cache
 /*
 app.get('/api/cache/:key', async (c) => {
@@ -531,7 +495,6 @@ app.get('/api/cache/:key', async (c) => {
   }
 });
 */
-
 // === Queue Examples ===
 // Example: Send message to queue
 /*
@@ -564,25 +527,23 @@ app.post('/api/queue/send', async (c) => {
   }
 });
 */
-
 // === Environment Variable Examples ===
 app.get('/api/config', (c) => {
-  return c.json({
-    hasEnv: !!c.env,
-    availableBindings: {
-      // These would be true if the resources are bound in raindrop.manifest
-      // MY_ACTOR: !!c.env.MY_ACTOR,
-      // MY_SMARTBUCKET: !!c.env.MY_SMARTBUCKET,
-      // MY_CACHE: !!c.env.MY_CACHE,
-      // MY_QUEUE: !!c.env.MY_QUEUE,
-    },
-    // Example access to environment variables:
-    // MY_SECRET_VAR: c.env.MY_SECRET_VAR // This would be undefined if not set
-  });
+    return c.json({
+        hasEnv: !!c.env,
+        availableBindings: {
+        // These would be true if the resources are bound in raindrop.manifest
+        // MY_ACTOR: !!c.env.MY_ACTOR,
+        // MY_SMARTBUCKET: !!c.env.MY_SMARTBUCKET,
+        // MY_CACHE: !!c.env.MY_CACHE,
+        // MY_QUEUE: !!c.env.MY_QUEUE,
+        },
+        // Example access to environment variables:
+        // MY_SECRET_VAR: c.env.MY_SECRET_VAR // This would be undefined if not set
+    });
 });
-
-export default class extends Service<Env> {
-  async fetch(request: Request): Promise<Response> {
-    return app.fetch(request, this.env);
-  }
+export default class extends Service {
+    async fetch(request) {
+        return app.fetch(request, this.env);
+    }
 }

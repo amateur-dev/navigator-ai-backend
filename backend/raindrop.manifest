@@ -3,7 +3,7 @@ application "navigator-ai-backend" {
   service "api" {
   }
 
-  smartsql "referrals-db" {}
+  smartbucket "referral-docs" {}
 
   smartmemory "agent-memory" {}
 

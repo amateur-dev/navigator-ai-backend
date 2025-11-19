@@ -10,6 +10,16 @@
 
 ## Demo Flow
 
+### Step 0: Build the Project (First Time Only)
+```bash
+npm run build
+```
+
+**What to show:**
+- TypeScript compilation completing successfully
+
+---
+
 ### Step 1: Start the Server
 ```bash
 npm start
