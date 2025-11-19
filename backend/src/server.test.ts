@@ -52,3 +52,25 @@ describe('POST /extract', () => {
         expect(res.status).toBe(400);
     });
 });
+
+describe('POST /orchestrate', () => {
+    it('should return orchestration results', async () => {
+        const res = await request(app)
+            .post('/orchestrate')
+            .send({
+                patientName: 'John Doe',
+                referralReason: 'Cardiology consultation',
+                insuranceProvider: 'BlueCross',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.specialist).toBe('Cardiologist');
+        expect(res.body.insuranceStatus).toBe('Approved');
+        expect(res.body.availableSlots).toHaveLength(2);
+    });
+
+    it('should return 400 if missing fields', async () => {
+        const res = await request(app).post('/orchestrate').send({});
+        expect(res.status).toBe(400);
+    });
+});

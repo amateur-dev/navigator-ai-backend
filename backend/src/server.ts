@@ -56,6 +56,36 @@ app.post('/extract', async (req, res) => {
     res.status(200).json(extractedData);
 });
 
+app.post('/orchestrate', async (req, res) => {
+    const { patientName, referralReason, insuranceProvider } = req.body;
+    if (!patientName || !referralReason) {
+        return res.status(400).send('Missing required fields');
+    }
+
+    // Mock Specialist Inference
+    let specialist = 'General Practitioner';
+    if (referralReason.toLowerCase().includes('cardio')) {
+        specialist = 'Cardiologist';
+    } else if (referralReason.toLowerCase().includes('derma')) {
+        specialist = 'Dermatologist';
+    }
+
+    // Mock Insurance Check
+    const insuranceStatus = insuranceProvider === 'BlueCross' ? 'Approved' : 'Pending';
+
+    // Mock Schedule Lookup (SmartSQL)
+    const availableSlots = [
+        '2025-11-20T10:00:00Z',
+        '2025-11-21T14:00:00Z',
+    ];
+
+    res.status(200).json({
+        specialist,
+        insuranceStatus,
+        availableSlots,
+    });
+});
+
 if (require.main === module) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
