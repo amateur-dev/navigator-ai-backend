@@ -101,7 +101,14 @@ app.post('/confirm', async (req, res) => {
     });
 });
 
-if (require.main === module) {
+// ESM replacement for require.main === module
+import { fileURLToPath } from 'url';
+import path from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+if (process.argv[1] === __filename) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
     });

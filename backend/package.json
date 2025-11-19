@@ -1,6 +1,7 @@
 {
   "name": "backend",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "test": "jest",
@@ -13,9 +14,12 @@
   "description": "",
   "dependencies": {
     "@liquidmetal-ai/lm-raindrop": "^0.6.43",
+    "@liquidmetal-ai/raindrop-framework": "^0.10.0",
     "@types/multer": "^2.0.0",
     "express": "^5.1.0",
-    "multer": "^2.0.2"
+    "hono": "^4.10.6",
+    "multer": "^2.0.2",
+    "vitest": "^4.0.10"
   },
   "devDependencies": {
     "@types/express": "^5.0.5",
