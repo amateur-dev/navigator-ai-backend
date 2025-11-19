@@ -1,0 +1,103 @@
+{
+  "root": true,
+  "$schema": "https://biomejs.dev/schemas/2.2.0/schema.json",
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "semicolons": "asNeeded",
+      "trailingCommas": "none"
+    }
+  },
+  "css": {
+    "linter": {
+      "enabled": false
+    }
+  },
+  "assist": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "suspicious": {
+        "noImplicitAnyLet": "warn",
+        "noDuplicateObjectKeys": "warn",
+        "noDocumentCookie": "off"
+      },
+      "performance": {
+        "noDelete": "error"
+      },
+      "complexity": {
+        "noUselessSwitchCase": "warn",
+        "noUselessTypeConstraint": "warn"
+      },
+      "correctness": {
+        "useUniqueElementIds": "off",
+        "noUnusedImports": {
+          "level": "error",
+          "fix": "safe"
+        },
+        "noUnusedVariables": {
+          "level": "warn",
+          "fix": "safe"
+        },
+        "noNestedComponentDefinitions": "off"
+      },
+      "nursery": {
+        "noMisusedPromises": "error"
+      },
+      "a11y": {
+        "noSvgWithoutTitle": "off",
+        "useSemanticElements": "off"
+      },
+      "security": {
+        "noDangerouslySetInnerHtml": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/examples/svelte-kit-example/**"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedImports": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/*.json"],
+      "formatter": {
+        "indentStyle": "space",
+        "indentWidth": 2
+      }
+    }
+  ],
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "**/*.js",
+      "**/*.jsx",
+      "**/*.json",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/.next",
+      "!**/.vercel",
+      "!**/.turbo",
+      "!**/generated",
+      "!**/prisma",
+      "!**/.cache"
+    ]
+  }
+}

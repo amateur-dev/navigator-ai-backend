@@ -1,0 +1,24 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build output
+.next
+
+# Cached blog articles (pre-fetched at build time)
+data/blog
+
+# Environment variables
+.env
+.env*.local
+
+# TypeScript
+next-env.d.ts
+*.tsbuildinfo
+
+# Development
+.DS_Store
+.vercel
+
+# Prisma
+generated

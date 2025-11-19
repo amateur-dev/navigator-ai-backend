@@ -1,0 +1,55 @@
+{
+  "brand": {
+    "name": "Navigator AI",
+    "tagline": "From referral to kept visit, automatically.",
+    "description": "Navigator AI gives care coordinators an end-to-end autopilot for referrals, benefits, prior auth, and follow-through—so patients get seen on time and teams stop firefighting.",
+    "logoAlt": "Navigator AI logo"
+  },
+  "columns": [
+    {
+      "title": "Product",
+      "links": [
+        { "label": "Features", "href": "#features" },
+        { "label": "How it Works", "href": "#how-it-works" },
+        { "label": "Use Cases", "href": "#use-cases" },
+        { "label": "Pricing", "href": "#pricing" }
+      ]
+    },
+    {
+      "title": "Solutions",
+      "links": [
+        {
+          "label": "Hospitals & Health Systems",
+          "href": "#solutions-hospitals"
+        },
+        {
+          "label": "Physician Practices & Clinics",
+          "href": "#solutions-clinics"
+        },
+        { "label": "Health Plans & Payers", "href": "#solutions-payers" },
+        {
+          "label": "Community & Care Navigation",
+          "href": "#solutions-community"
+        }
+      ]
+    },
+    {
+      "title": "Resources",
+      "links": [
+        { "label": "FAQ", "href": "#faq" },
+        { "label": "Implementation Overview", "href": "#implementation" },
+        { "label": "Security & Compliance", "href": "#security" },
+        { "label": "Contact Sales", "href": "#contact" }
+      ]
+    },
+    {
+      "title": "Company",
+      "links": [
+        { "label": "About", "href": "/about" },
+        { "label": "Privacy Policy", "href": "/legal/privacy" },
+        { "label": "Terms of Use", "href": "/legal/terms" },
+        { "label": "Data Processing", "href": "/legal/dpa" }
+      ]
+    }
+  ]
+}

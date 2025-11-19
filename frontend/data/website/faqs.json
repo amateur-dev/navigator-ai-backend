@@ -1,0 +1,38 @@
+[
+  {
+    "question": "What exactly does Navigator AI do?",
+    "answer": "Navigator AI takes a referral and automatically drives it toward a kept, in-network visit. It checks benefits and eligibility, assembles prior auth packets, suggests in-network scheduling options, sends reminders to patients, and keeps all stakeholders updated on status. Coordinators stay in control but no longer have to manually chase every step."
+  },
+  {
+    "question": "Who is Navigator AI built for?",
+    "answer": "Navigator AI is designed for care coordinators, referral coordinators, patient navigators, and operations teams working in hospitals, physician practices, outpatient clinics, health plans, and community health organizations. If your team spends a lot of time chasing paperwork, portals, and phone calls just to get patients seen, you are the primary user."
+  },
+  {
+    "question": "How does Navigator AI fit into our existing workflow?",
+    "answer": "Navigator AI plugs into your existing referral and scheduling flows instead of forcing a complete redesign. Referrals can originate from your EHR or intake channels, then Navigator AI creates a case, runs benefits and prior auth workflows, recommends next steps, and updates status back into your systems. Coordinators still make final decisions, but the manual checking, copying, and follow-up are largely automated."
+  },
+  {
+    "question": "What systems does Navigator AI integrate with?",
+    "answer": "Navigator AI is built to integrate with common EHRs, practice management systems, payer portals, and scheduling tools. The platform uses APIs, secure file exchange, and structured exports where direct integrations are not yet available. During onboarding, we prioritize the connections that matter most for your referral, benefits, and authorization flows."
+  },
+  {
+    "question": "How does Navigator AI handle patient data and compliance?",
+    "answer": "Navigator AI is designed for healthcare data from day one. It follows industry best practices for encryption in transit and at rest, strict access controls, audit logging, and environment isolation. Protected health information is only used to support coordination workflows, and access is limited to authorized users and systems according to your organization’s policies."
+  },
+  {
+    "question": "Which tasks are fully automated and which still need human review?",
+    "answer": "Navigator AI automates data gathering, status checks, routing logic, document assembly, reminders, and routine follow-ups. Coordinators stay in the loop to handle edge cases, talk to patients and clinicians, make judgment calls on complex authorizations, and approve final scheduling decisions when required by policy. The goal is to clear the repetitive work so humans can focus on conversations and exceptions."
+  },
+  {
+    "question": "How does Navigator AI handle denials, missing information, or exceptions?",
+    "answer": "When a case is denied, missing data, or stuck, Navigator AI flags the issue, surfaces the reason, and suggests next steps (for example, which document to upload, what to clarify with the clinician, or alternative in-network options). Those items appear in prioritized worklists so coordinators can quickly unblock the case instead of discovering problems days later."
+  },
+  {
+    "question": "Do clinicians or patients need to learn a new system?",
+    "answer": "Care coordinators interact directly with Navigator AI. Clinicians typically see cleaner, more complete referrals and clearer status updates, often inside the systems they already use. Patients primarily experience Navigator AI through timely outreach, reminders, and clearer instructions, delivered via SMS, email, or channels you already support, without needing a new login."
+  },
+  {
+    "question": "What does implementation and rollout look like?",
+    "answer": "Implementation focuses on three tracks: connecting to your core systems, configuring workflows and rules around your highest-volume referral pathways, and training coordinators on the new worklists and automation. Most teams start with a limited set of services or payers, prove value, and then expand coverage once the early gains are clear."
+  }
+]

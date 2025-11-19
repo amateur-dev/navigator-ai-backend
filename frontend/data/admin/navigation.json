@@ -1,0 +1,34 @@
+[
+  {
+    "title": "Home",
+    "url": "/admin",
+    "icon": "House"
+  },
+  {
+    "title": "Users",
+    "url": "/admin/users",
+    "icon": "Users"
+  },
+  {
+    "title": "Flags",
+    "url": "/admin/flags",
+    "icon": "Flag",
+    "items": [
+      {
+        "title": "Frontend ",
+        "url": "/admin/flags/frontend",
+        "icon": "TvMinimal"
+      },
+      {
+        "title": "Backend",
+        "url": "/admin/flags/backend",
+        "icon": "DatabaseZap"
+      },
+      {
+        "title": "Website",
+        "url": "/admin/flags/website",
+        "icon": "Globe"
+      }
+    ]
+  }
+]

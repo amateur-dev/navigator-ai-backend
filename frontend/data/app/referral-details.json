@@ -1,0 +1,475 @@
+[
+  {
+    "id": "ref-001",
+    "patientFirstName": "Sarah",
+    "patientLastName": "Johnson",
+    "patientEmail": "sarah.johnson@email.com",
+    "age": 58,
+    "specialty": "Cardiology",
+    "payer": "Blue Cross Blue Shield",
+    "plan": "Blue Cross PPO Plus",
+    "status": "Scheduled",
+    "urgency": "urgent",
+    "appointmentDate": "2025-11-22T10:30:00Z",
+    "referralDate": "2025-11-10T14:00:00Z",
+    "noShowRisk": 15,
+    "providerName": "Dr. James Mitchell",
+    "facilityName": "Downtown Medical Center",
+    "reason": "Chest pain and irregular heartbeat",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-10T14:15:00Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-11T09:30:00Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-11-13T16:45:00Z",
+        "description": "PA approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "current",
+        "completedAt": "2025-11-15T11:20:00Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-10T14:00:00Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Referral created by primary care physician",
+        "details": { "source": "EHR Integration" }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-10T14:15:00Z",
+        "user": "Linda Martinez",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-11T09:00:00Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-11T09:30:00Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": { "copay": "$40", "coinsurance": "20%" }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-12T10:15:00Z",
+        "user": "Sarah Chen",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-13T16:45:00Z",
+        "user": "Blue Cross Blue Shield",
+        "description": "Prior authorization approved - Authorization #PA-2025-8847",
+        "details": { "authNumber": "PA-2025-8847", "validUntil": "2026-02-13" }
+      },
+      {
+        "id": "log-7",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-11-15T11:20:00Z",
+        "user": "Mike Johnson",
+        "description": "Appointment scheduled for Nov 22, 2025 at 10:30 AM"
+      },
+      {
+        "id": "log-8",
+        "event": "Confirmation SMS Sent",
+        "type": "message",
+        "timestamp": "2025-11-15T11:25:00Z",
+        "user": "System",
+        "description": "Appointment confirmation sent via SMS"
+      },
+      {
+        "id": "log-9",
+        "event": "Reminder Email Sent",
+        "type": "message",
+        "timestamp": "2025-11-19T09:00:00Z",
+        "user": "System",
+        "description": "3-day appointment reminder sent via email"
+      },
+      {
+        "id": "log-10",
+        "event": "Patient Confirmed Attendance",
+        "type": "message",
+        "timestamp": "2025-11-19T14:30:00Z",
+        "user": "Sarah Johnson",
+        "description": "Patient replied 'YES' to confirmation request"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "SMS",
+        "content": "Hi Sarah, your cardiology appointment with Dr. James Mitchell is scheduled for Nov 22 at 10:30 AM at Downtown Medical Center. Please reply YES to confirm or CANCEL to reschedule.",
+        "timestamp": "2025-11-15T11:25:00Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "sarah.johnson@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "SMS",
+        "content": "YES",
+        "timestamp": "2025-11-19T14:30:00Z",
+        "status": "delivered",
+        "direction": "inbound"
+      },
+      {
+        "id": "msg-3",
+        "channel": "Email",
+        "content": "Dear Sarah Johnson,\n\nThis is a reminder that you have an appointment scheduled:\n\nDate: Friday, November 22, 2025\nTime: 10:30 AM\nProvider: Dr. James Mitchell\nLocation: Downtown Medical Center, 123 Main St\nSpecialty: Cardiology\n\nPlease bring your insurance card and a valid ID. If you need to reschedule, please call us at (555) 123-4567.\n\nThank you!",
+        "timestamp": "2025-11-19T09:00:00Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "sarah.johnson@email.com"
+      }
+    ]
+  },
+  {
+    "id": "ref-002",
+    "patientFirstName": "Michael",
+    "patientLastName": "Chen",
+    "patientEmail": "michael.chen@email.com",
+    "age": 42,
+    "specialty": "Orthopedics",
+    "payer": "UnitedHealthcare",
+    "plan": "UnitedHealthcare Choice Plus",
+    "status": "Pending",
+    "urgency": "routine",
+    "appointmentDate": "2025-11-25T14:00:00Z",
+    "referralDate": "2025-11-15T09:30:00Z",
+    "noShowRisk": 42,
+    "providerName": "Dr. Patricia Lee",
+    "facilityName": "Orthopedic Specialists Center",
+    "reason": "Chronic knee pain, potential meniscus tear",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-15T10:00:00Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-16T11:15:00Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "current",
+        "description": "PA requested, awaiting approval"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment to be scheduled"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-15T09:30:00Z",
+        "user": "Dr. Robert Chang",
+        "description": "Referral created for orthopedic evaluation"
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-15T10:00:00Z",
+        "user": "Jessica White",
+        "description": "Patient information collected and verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-16T11:00:00Z",
+        "user": "System",
+        "description": "Eligibility verification in progress"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-16T11:15:00Z",
+        "user": "System",
+        "description": "Active insurance coverage confirmed",
+        "details": { "copay": "$30", "deductible": "$150 remaining" }
+      },
+      {
+        "id": "log-5",
+        "event": "Medical Records Requested",
+        "type": "system",
+        "timestamp": "2025-11-16T13:30:00Z",
+        "user": "System",
+        "description": "X-ray images requested from referring physician"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-17T10:45:00Z",
+        "user": "Maria Lopez",
+        "description": "Prior authorization request submitted for specialist consultation"
+      },
+      {
+        "id": "log-7",
+        "event": "Additional Info Requested",
+        "type": "pa",
+        "timestamp": "2025-11-18T14:20:00Z",
+        "user": "UnitedHealthcare",
+        "description": "Payer requesting additional clinical documentation"
+      },
+      {
+        "id": "log-8",
+        "event": "Documentation Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-18T16:00:00Z",
+        "user": "Maria Lopez",
+        "description": "Additional medical records and imaging submitted to payer"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "Email",
+        "content": "Dear Michael Chen,\n\nWe have received your referral to Orthopedic Specialists Center. We are currently working on obtaining prior authorization from your insurance company.\n\nWe will contact you once we receive approval to schedule your appointment.\n\nIf you have any questions, please call us at (555) 234-5678.\n\nBest regards,\nOrthopedic Specialists Center",
+        "timestamp": "2025-11-15T10:30:00Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "michael.chen@email.com"
+      }
+    ]
+  },
+  {
+    "id": "ref-003",
+    "patientFirstName": "Emily",
+    "patientLastName": "Rodriguez",
+    "patientEmail": "emily.rodriguez@email.com",
+    "age": 35,
+    "specialty": "Neurology",
+    "payer": "Aetna",
+    "plan": "Aetna HealthFund HDHP",
+    "status": "Completed",
+    "urgency": "urgent",
+    "appointmentDate": "2025-11-15T11:00:00Z",
+    "referralDate": "2025-10-28T16:00:00Z",
+    "noShowRisk": 8,
+    "providerName": "Dr. David Kumar",
+    "facilityName": "Neuroscience Institute",
+    "reason": "Persistent migraines and vision disturbances",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-10-28T16:30:00Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-10-29T10:00:00Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-11-01T14:30:00Z",
+        "description": "PA approved for neurological evaluation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "completed",
+        "completedAt": "2025-11-04T09:15:00Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "completed",
+        "completedAt": "2025-11-15T11:45:00Z",
+        "description": "Patient attended appointment"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-10-28T16:00:00Z",
+        "user": "Dr. Amanda Foster",
+        "description": "Urgent referral for neurological evaluation"
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-10-28T16:30:00Z",
+        "user": "Tom Anderson",
+        "description": "Patient information verified, marked as urgent"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-10-29T10:00:00Z",
+        "user": "System",
+        "description": "Insurance verified, high-deductible plan",
+        "details": { "deductible": "$3,000", "remaining": "$1,200" }
+      },
+      {
+        "id": "log-4",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-10-30T09:00:00Z",
+        "user": "Rachel Green",
+        "description": "Expedited PA request submitted due to urgency"
+      },
+      {
+        "id": "log-5",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-01T14:30:00Z",
+        "user": "Aetna",
+        "description": "Prior authorization approved - Authorization #PA-2025-9124",
+        "details": { "authNumber": "PA-2025-9124", "validUntil": "2026-03-01" }
+      },
+      {
+        "id": "log-6",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-11-04T09:15:00Z",
+        "user": "System",
+        "description": "Urgent appointment scheduled for Nov 15, 2025"
+      },
+      {
+        "id": "log-7",
+        "event": "Confirmation SMS Sent",
+        "type": "message",
+        "timestamp": "2025-11-04T09:20:00Z",
+        "user": "System",
+        "description": "Appointment details sent via SMS"
+      },
+      {
+        "id": "log-8",
+        "event": "Reminder Sent",
+        "type": "message",
+        "timestamp": "2025-11-13T10:00:00Z",
+        "user": "System",
+        "description": "48-hour reminder sent"
+      },
+      {
+        "id": "log-9",
+        "event": "Patient Checked In",
+        "type": "scheduling",
+        "timestamp": "2025-11-15T10:45:00Z",
+        "user": "Front Desk",
+        "description": "Patient arrived and checked in for appointment"
+      },
+      {
+        "id": "log-10",
+        "event": "Appointment Completed",
+        "type": "scheduling",
+        "timestamp": "2025-11-15T11:45:00Z",
+        "user": "Dr. David Kumar",
+        "description": "Consultation completed, follow-up scheduled"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "SMS",
+        "content": "Hi Emily, your urgent neurology appointment with Dr. David Kumar is confirmed for Nov 15 at 11:00 AM at Neuroscience Institute. Reply YES to confirm.",
+        "timestamp": "2025-11-04T09:20:00Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "emily.rodriguez@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "SMS",
+        "content": "YES",
+        "timestamp": "2025-11-04T14:30:00Z",
+        "status": "delivered",
+        "direction": "inbound"
+      },
+      {
+        "id": "msg-3",
+        "channel": "SMS",
+        "content": "Reminder: Your appointment with Dr. Kumar is in 2 days (Nov 15 at 11:00 AM). Please arrive 15 minutes early to complete paperwork.",
+        "timestamp": "2025-11-13T10:00:00Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "emily.rodriguez@email.com"
+      },
+      {
+        "id": "msg-4",
+        "channel": "Email",
+        "content": "Dear Emily,\n\nThank you for visiting Neuroscience Institute today. Dr. Kumar has prescribed medication for your migraines and scheduled a follow-up MRI.\n\nYour next appointment is scheduled for December 5, 2025.\n\nPrescriptions have been sent to your pharmacy.\n\nBest regards,\nNeuroscience Institute",
+        "timestamp": "2025-11-15T13:00:00Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "emily.rodriguez@email.com"
+      }
+    ]
+  }
+]

@@ -1,0 +1,56 @@
+[
+  {
+    "id": "referral_to_visit_autopilot",
+    "title": "Referral-to-Visit Autopilot",
+    "description": "Automatically moves each referral from intake to a scheduled, kept visit—handling routing, tasks, and follow-ups so nothing falls through the cracks.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-bot-message-square-icon lucide-bot-message-square'><path d='M12 6V2H8'/><path d='M15 11v2'/><path d='M2 12h2'/><path d='M20 12h2'/><path d='M20 16a2 2 0 0 1-2 2H8.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 4 20.286V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z'/><path d='M9 11v2'/></svg>"
+  },
+  {
+    "id": "in_network_scheduling_engine",
+    "title": "In-Network Scheduling Engine",
+    "description": "Matches patients to in-network providers, slots, and locations based on referral type, payer rules, and preferences—without endless phone calls.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-network-icon lucide-network'><rect x='16' y='16' width='6' height='6' rx='1'/><rect x='2' y='16' width='6' height='6' rx='1'/><rect x='9' y='2' width='6' height='6' rx='1'/><path d='M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3'/><path d='M12 12V8'/></svg>"
+  },
+  {
+    "id": "real_time_benefits_checks",
+    "title": "Real-Time Benefits & Eligibility Checks",
+    "description": "Pulls eligibility and benefits data up front so coordinators see what’s covered, what’s not, and what’s needed—before they book.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-notebook-pen-icon lucide-notebook-pen'><path d='M13.4 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-7.4'/><path d='M2 6h4'/><path d='M2 10h4'/><path d='M2 14h4'/><path d='M2 18h4'/><path d='M21.378 5.626a1 1 0 1 0-3.004-3.004l-5.01 5.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z'/></svg>"
+  },
+  {
+    "id": "prior_auth_automation",
+    "title": "Prior Authorization Automation",
+    "description": "Assembles prior auth packets, tracks status, and flags missing documentation, reducing back-and-forth and increasing first-pass approvals.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-spell-check-icon lucide-spell-check'><path d='m6 16 6-12 6 12'/><path d='M8 12h8'/><path d='m16 20 2 2 4-4'/></svg>"
+  },
+  {
+    "id": "patient_outreach_reminders",
+    "title": "Multichannel Patient Outreach & Reminders",
+    "description": "Sends branded SMS/email reminders, prep instructions, and follow-ups, reducing no-shows and keeping patients informed at every step.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-message-square-more-icon lucide-message-square-more'><path d='M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z'/><path d='M12 11h.01'/><path d='M16 11h.01'/><path d='M8 11h.01'/></svg>"
+  },
+  {
+    "id": "live_case_tracking",
+    "title": "Live Case Tracking for Every Stakeholder",
+    "description": "One status view for coordinators, clinicians, and payers: see where each case is stuck, what’s done, and what’s next—without chasing updates.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-radio-tower-icon lucide-radio-tower'><path d='M4.9 16.1C1 12.2 1 5.8 4.9 1.9'/><path d='M7.8 4.7a6.14 6.14 0 0 0-.8 7.5'/><circle cx='12' cy='9' r='2'/><path d='M16.2 4.8c2 2 2.26 5.11.8 7.47'/><path d='M19.1 1.9a9.96 9.96 0 0 1 0 14.1'/><path d='M9.5 18h5'/><path d='m8 22 4-11 4 11'/></svg>"
+  },
+  {
+    "id": "worklists_caseload_prioritization",
+    "title": "Worklists & Caseload Prioritization",
+    "description": "Smart queues that surface the right next actions by urgency, risk, and service line so coordinators spend time where it actually moves care.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-list-checks-icon lucide-list-checks'><path d='M13 5h8'/><path d='M13 12h8'/><path d='M13 19h8'/><path d='m3 17 2 2 4-4'/><path d='m3 7 2 2 4-4'/></svg>"
+  },
+  {
+    "id": "ehr_payer_integrations",
+    "title": "EHR & Payer System Integrations",
+    "description": "Connects to existing EHRs, scheduling, and payer portals to sync referrals, documentation, and outcomes—no double data entry.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-layers-icon lucide-layers'><path d='M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z'/><path d='M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12'/><path d='M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17'/></svg>"
+  },
+  {
+    "id": "kpi_operations_analytics",
+    "title": "KPI & Operations Analytics",
+    "description": "Track time-to-schedule, first-pass approvals, no-shows, and throughput by team, clinic, or payer to prove impact and find bottlenecks.",
+    "icon": "<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' class='lucide lucide-chart-no-axes-combined-icon lucide-chart-no-axes-combined'><path d='M12 16v5'/><path d='M16 14v7'/><path d='M20 10v11'/><path d='m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15'/><path d='M4 18v3'/><path d='M8 14v7'/></svg>"
+  }
+]
