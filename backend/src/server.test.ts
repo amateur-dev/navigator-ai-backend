@@ -35,3 +35,20 @@ describe('POST /upload', () => {
         expect(res.status).toBe(400);
     });
 });
+
+describe('POST /extract', () => {
+    it('should return extracted data', async () => {
+        const res = await request(app)
+            .post('/extract')
+            .send({ filename: 'test.txt' });
+
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('patientName', 'John Doe');
+        expect(res.body).toHaveProperty('referralReason');
+    });
+
+    it('should return 400 if no filename provided', async () => {
+        const res = await request(app).post('/extract').send({});
+        expect(res.status).toBe(400);
+    });
+});

@@ -39,6 +39,23 @@ app.post('/upload', upload.single('file'), async (req, res) => {
     }
 });
 
+app.post('/extract', async (req, res) => {
+    const { filename } = req.body;
+    if (!filename) {
+        return res.status(400).send('Filename is required');
+    }
+
+    // Mock AI extraction
+    const extractedData = {
+        patientName: 'John Doe',
+        dateOfBirth: '1980-01-01',
+        referralReason: 'Cardiology consultation',
+        insuranceProvider: 'BlueCross',
+    };
+
+    res.status(200).json(extractedData);
+});
+
 if (require.main === module) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);
