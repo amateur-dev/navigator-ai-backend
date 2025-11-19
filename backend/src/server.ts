@@ -86,6 +86,21 @@ app.post('/orchestrate', async (req, res) => {
     });
 });
 
+app.post('/confirm', async (req, res) => {
+    const { patientName, slot } = req.body;
+    if (!patientName || !slot) {
+        return res.status(400).send('Missing required fields');
+    }
+
+    // Mock SMS/Email dispatch
+    console.log(`Sending confirmation to ${patientName} for slot ${slot}`);
+
+    res.status(200).json({
+        message: 'Confirmation sent successfully',
+        status: 'Sent',
+    });
+});
+
 if (require.main === module) {
     app.listen(port, () => {
         console.log(`Server running on port ${port}`);

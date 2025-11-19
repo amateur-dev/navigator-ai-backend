@@ -74,3 +74,23 @@ describe('POST /orchestrate', () => {
         expect(res.status).toBe(400);
     });
 });
+
+describe('POST /confirm', () => {
+    it('should send confirmation', async () => {
+        const res = await request(app)
+            .post('/confirm')
+            .send({
+                patientName: 'John Doe',
+                slot: '2025-11-20T10:00:00Z',
+            });
+
+        expect(res.status).toBe(200);
+        expect(res.body.message).toBe('Confirmation sent successfully');
+        expect(res.body.status).toBe('Sent');
+    });
+
+    it('should return 400 if missing fields', async () => {
+        const res = await request(app).post('/confirm').send({});
+        expect(res.status).toBe(400);
+    });
+});
