@@ -8,5 +8,5 @@ application "navigator-ai-backend" {
 
   smartmemory "agent-memory" {}
 
-  smartbucket "referral-docs" {}
+  smartsql "referrals-db" {}
 }

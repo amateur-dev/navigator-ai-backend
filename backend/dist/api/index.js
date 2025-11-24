@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "bd5f238359a331ab843fec5530570d08444c5ac9"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "486c7a65fec0f890f7c8ccd7b39f995b3ecab216"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1686,52 +1686,6 @@ var MOCK_UPLOAD_RESPONSE = {
   },
   message: "Document processed successfully"
 };
-var MOCK_ORCHESTRATION_RESPONSE = {
-  success: true,
-  data: {
-    referralId: "ref-001",
-    status: "Scheduled",
-    orchestrationId: "orch-98765432",
-    completedSteps: [
-      {
-        id: "step-1",
-        label: "Intake",
-        status: "completed",
-        completedAt: "2025-11-10T14:15:00Z"
-      },
-      {
-        id: "step-2",
-        label: "Eligibility",
-        status: "completed",
-        completedAt: "2025-11-11T09:30:00Z"
-      },
-      {
-        id: "step-3",
-        label: "Prior Authorization",
-        status: "completed",
-        completedAt: "2025-11-13T16:45:00Z"
-      },
-      {
-        id: "step-4",
-        label: "Scheduled",
-        status: "completed",
-        completedAt: "2025-11-15T11:20:00Z"
-      }
-    ],
-    appointmentDetails: {
-      appointmentDate: "2025-11-22T10:30:00Z",
-      providerName: "Dr. James Mitchell",
-      facilityName: "Downtown Medical Center",
-      facilityAddress: "123 Main St, New York, NY 10001"
-    },
-    notificationsSent: {
-      sms: true,
-      email: true
-    },
-    estimatedCompletionTime: "2025-11-15T11:30:00Z"
-  },
-  message: "Referral orchestration completed successfully"
-};
 var MOCK_REFERRALS_LIST = {
   success: true,
   data: {
@@ -2112,32 +2066,262 @@ app.post("/extract", async (c) => {
     if (!filename) {
       return c.text("Filename is required", 400);
     }
-    const extractedData = {
-      patientName: "John Doe",
-      dateOfBirth: "1980-01-01",
-      referralReason: "Cardiology consultation",
-      insuranceProvider: "BlueCross"
-    };
+    const smartbucket = c.env.REFERRAL_DOCS;
+    const prompt = `
+      Extract the following information from this medical referral document:
+      1. Patient Name
+      2. Date of Birth (YYYY-MM-DD format if possible)
+      3. Referral Reason (medical condition or symptom)
+      4. Insurance Provider
+
+      Return the result as a valid JSON object with keys: 
+      patientName, dateOfBirth, referralReason, insuranceProvider.
+      Do not include any markdown formatting or explanation, just the JSON string.
+    `;
+    const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+    const response = await smartbucket.documentChat({
+      objectId: filename,
+      input: prompt,
+      requestId
+    });
+    let extractedData;
+    try {
+      if (typeof response.answer === "object") {
+        extractedData = response.answer;
+      } else {
+        const cleanJson = response.answer.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
+        extractedData = JSON.parse(cleanJson);
+      }
+    } catch (e) {
+      console.error("Failed to parse AI response:", response.answer);
+      try {
+        const jsonMatch = response.answer.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          extractedData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No JSON found");
+        }
+      } catch (retryError) {
+        return c.json({
+          error: "Failed to parse extracted data",
+          rawResponse: response.answer
+        }, 500);
+      }
+    }
     return c.json(extractedData);
   } catch (error) {
     console.error("Extract error:", error);
-    return c.text("Extraction failed", 500);
+    return c.text("Extraction failed: " + (error instanceof Error ? error.message : String(error)), 500);
   }
 });
 app.post("/orchestrate", async (c) => {
   try {
     const body = await c.req.json();
-    return c.json(MOCK_ORCHESTRATION_RESPONSE);
+    const { patientName, referralReason, insuranceProvider } = body;
+    if (!patientName || !referralReason) {
+      return c.json({
+        success: false,
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Missing required fields",
+          statusCode: 400
+        }
+      }, 400);
+    }
+    let specialty = "General Practitioner";
+    const reasonLower = referralReason.toLowerCase();
+    const specialtyMap = {
+      "Cardiologist": ["heart", "cardio", "chest", "palpitation", "pulse", "pressure"],
+      "Dermatologist": ["skin", "derma", "rash", "itch", "acne", "mole", "lesion"],
+      "Orthopedist": ["bone", "joint", "knee", "back", "spine", "fracture", "ortho", "shoulder", "hip"],
+      "Neurologist": ["headache", "migraine", "seizure", "numbness", "dizzy", "brain", "nerve", "neuro"],
+      "Pediatrician": ["child", "baby", "infant", "toddler", "pediatric", "growth"],
+      "Psychiatrist": ["mental", "depress", "anxiety", "mood", "psych", "behavior"],
+      "Oncologist": ["cancer", "tumor", "lump", "onco", "chemo", "radiation"],
+      "Gastroenterologist": ["stomach", "gut", "digest", "bowel", "reflux", "gastro", "liver"],
+      "Pulmonologist": ["lung", "breath", "asthma", "cough", "pulmo", "respiratory"],
+      "Urologist": ["urine", "bladder", "kidney", "prostate", "uro"],
+      "Ophthalmologist": ["eye", "vision", "sight", "blind", "optic"],
+      "ENT Specialist": ["ear", "nose", "throat", "sinus", "hearing"],
+      "Endocrinologist": ["diabetes", "thyroid", "hormone", "sugar", "endo"],
+      "Rheumatologist": ["arthritis", "autoimmune", "lupus", "rheum"]
+    };
+    for (const [spec, keywords] of Object.entries(specialtyMap)) {
+      if (keywords.some((k) => reasonLower.includes(k))) {
+        specialty = spec;
+        break;
+      }
+    }
+    const insuranceStatus = insuranceProvider && insuranceProvider.toLowerCase().includes("blue") ? "Approved" : "Pending Review";
+    const db = c.env.REFERRALS_DB;
+    const specialistsResult = await db.executeQuery({
+      sqlQuery: `SELECT * FROM specialists WHERE specialty = '${specialty}'`
+    });
+    let availableSlots = [];
+    let selectedSpecialist = null;
+    const getRows = (result) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === "string") {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            console.error("Failed to parse SQL results:", e);
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+    const specialists = getRows(specialistsResult);
+    if (specialists.length > 0) {
+      selectedSpecialist = specialists[0];
+      const slotsResult = await db.executeQuery({
+        sqlQuery: `SELECT * FROM slots WHERE specialist_id = ${selectedSpecialist.id} AND is_booked = 0 AND start_time > '${(/* @__PURE__ */ new Date()).toISOString()}' ORDER BY start_time ASC LIMIT 3`
+      });
+      const slots = getRows(slotsResult);
+      availableSlots = slots.map((slot) => slot.start_time);
+    }
+    const insertQuery = `INSERT INTO referrals (patient_name, condition, insurance_provider, specialist_id, status) 
+       VALUES ('${patientName}', '${referralReason}', '${insuranceProvider}', ${selectedSpecialist ? selectedSpecialist.id : "NULL"}, 'Pending')`;
+    await db.executeQuery({ sqlQuery: insertQuery });
+    const idResult = await db.executeQuery({ sqlQuery: "SELECT last_insert_rowid() as id" });
+    const idRows = getRows(idResult);
+    const referralId = idRows[0]?.id || "unknown";
+    return c.json({
+      success: true,
+      data: {
+        referralId: `ref-${referralId}`,
+        status: "Processed",
+        specialist: specialty,
+        assignedDoctor: selectedSpecialist ? selectedSpecialist.name : "Pending Assignment",
+        insuranceStatus,
+        availableSlots,
+        debug: {
+          specialtyUsed: specialty,
+          specialistsFound: specialists.length,
+          slotsFound: availableSlots.length
+        }
+      },
+      message: "Referral orchestration completed successfully"
+    });
   } catch (error) {
     console.error("Orchestrate error:", error);
     return c.json({
       success: false,
       error: {
         code: "ORCHESTRATION_FAILED",
-        message: "Failed to start orchestration",
+        message: "Failed to start orchestration: " + (error instanceof Error ? error.message : String(error)),
         statusCode: 500
       }
     }, 500);
+  }
+});
+app.post("/seed", async (c) => {
+  try {
+    const db = c.env.REFERRALS_DB;
+    await db.executeQuery({
+      sqlQuery: `
+      CREATE TABLE IF NOT EXISTS specialists (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          specialty TEXT NOT NULL,
+          email TEXT
+      );
+    `
+    });
+    await db.executeQuery({
+      sqlQuery: `
+      CREATE TABLE IF NOT EXISTS slots (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          specialist_id INTEGER REFERENCES specialists(id),
+          start_time TEXT NOT NULL,
+          is_booked INTEGER DEFAULT 0
+      );
+    `
+    });
+    await db.executeQuery({
+      sqlQuery: `
+      CREATE TABLE IF NOT EXISTS referrals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_name TEXT NOT NULL,
+          dob TEXT,
+          condition TEXT,
+          insurance_provider TEXT,
+          specialist_id INTEGER REFERENCES specialists(id),
+          slot_id INTEGER REFERENCES slots(id),
+          status TEXT DEFAULT 'Pending',
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `
+    });
+    await db.executeQuery({ sqlQuery: "DELETE FROM slots" });
+    await db.executeQuery({ sqlQuery: "DELETE FROM referrals" });
+    await db.executeQuery({ sqlQuery: "DELETE FROM specialists" });
+    const specialties = [
+      "Cardiologist",
+      "Dermatologist",
+      "Orthopedist",
+      "Neurologist",
+      "Pediatrician",
+      "Psychiatrist",
+      "Oncologist",
+      "Gastroenterologist",
+      "Pulmonologist",
+      "Urologist",
+      "Ophthalmologist",
+      "ENT Specialist",
+      "Endocrinologist",
+      "Rheumatologist",
+      "General Practitioner"
+    ];
+    const firstNames = ["James", "Sarah", "Emily", "Michael", "David", "Jessica", "Jennifer", "Robert", "William", "Elizabeth", "John", "Linda", "Richard", "Barbara", "Thomas"];
+    const lastNames = ["Mitchell", "Lee", "Chen", "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez"];
+    const specialistIds = [];
+    for (const spec of specialties) {
+      for (let i = 0; i < 10; i++) {
+        const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
+        const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
+        const name = `Dr. ${fn} ${ln}`;
+        const email = `${fn.toLowerCase()}.${ln.toLowerCase()}@hospital.com`;
+        await db.executeQuery({ sqlQuery: `INSERT INTO specialists (name, specialty, email) VALUES ('${name}', '${spec}', '${email}')` });
+      }
+    }
+    const allSpecsRes = await db.executeQuery({ sqlQuery: "SELECT id FROM specialists" });
+    const getRows = (result) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === "string") {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            console.error("Failed to parse SQL results:", e);
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+    const allSpecs = getRows(allSpecsRes);
+    const tomorrow = /* @__PURE__ */ new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    for (const doc of allSpecs) {
+      if (Math.random() > 0.5) continue;
+      for (let i = 0; i < 3; i++) {
+        const slotDate = new Date(tomorrow);
+        slotDate.setDate(slotDate.getDate() + Math.floor(Math.random() * 7));
+        slotDate.setHours(9 + Math.floor(Math.random() * 8), 0, 0, 0);
+        await db.executeQuery({ sqlQuery: `INSERT INTO slots (specialist_id, start_time) VALUES (${doc.id}, '${slotDate.toISOString()}')` });
+      }
+    }
+    return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists` });
+  } catch (error) {
+    console.error("Seed error:", error);
+    return c.json({ error: "Seeding failed: " + (error instanceof Error ? error.message : String(error)) }, 500);
   }
 });
 app.get("/referrals", (c) => {
