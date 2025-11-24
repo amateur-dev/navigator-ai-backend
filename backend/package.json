@@ -13,11 +13,13 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@cerebras/cerebras_cloud_sdk": "^1.59.0",
     "@liquidmetal-ai/lm-raindrop": "^0.1.2",
     "@liquidmetal-ai/raindrop-framework": "^0.11.0",
     "express": "^5.1.0",
     "hono": "^4.10.6",
     "multer": "^2.0.2",
+    "pdf-lib": "^1.17.1",
     "vitest": "^4.0.10"
   },
   "devDependencies": {
