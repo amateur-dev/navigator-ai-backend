@@ -113,7 +113,7 @@ export const ReferralFileUpload = () => {
         <div
           {...getRootProps({
             className: cn(
-              'dropzone flex justify-center rounded-lg border px-6 py-10 w-full bg-background items-center transition-all flex-1',
+              'dropzone flex justify-center rounded-2xl corner-smooth border px-6 py-10 w-full bg-white bg-[radial-gradient(#f4f4f5_1px,transparent_1px)] bg-size-[12px_12px] items-center transition-all flex-1 hover:border-gray-300',
               {
                 'border-primary bg-primary/5': isDragActive,
                 'border-border': !isDragActive
