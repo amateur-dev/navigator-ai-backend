@@ -334,9 +334,9 @@ app.post('/seed', async (c) => {
 
     const specialistIds: number[] = [];
 
-    // Generate ~150 doctors (10 per specialty)
+    // Generate ~30 doctors (2 per specialty)
     for (const spec of specialties) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 2; i++) {
         const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
         const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
         const name = `Dr. ${fn} ${ln}`;

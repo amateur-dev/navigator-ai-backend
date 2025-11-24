@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "486c7a65fec0f890f7c8ccd7b39f995b3ecab216"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "be36c00fe303e91dad2ba043b83ec3fa77dd27b0"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -2281,7 +2281,7 @@ app.post("/seed", async (c) => {
     const lastNames = ["Mitchell", "Lee", "Chen", "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez"];
     const specialistIds = [];
     for (const spec of specialties) {
-      for (let i = 0; i < 10; i++) {
+      for (let i = 0; i < 2; i++) {
         const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
         const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
         const name = `Dr. ${fn} ${ln}`;
