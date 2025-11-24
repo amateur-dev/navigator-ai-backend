@@ -55,7 +55,13 @@ app.post('/upload', async (c) => {
       }
     });
 
-    return c.json(MOCK_UPLOAD_RESPONSE);
+    // Return success - extraction will happen via /extract endpoint
+    return c.json({
+      success: true,
+      message: 'File uploaded successfully',
+      filename: file.name,
+      uploadedAt: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Upload error:', error);
     return c.json({
@@ -86,15 +92,28 @@ app.post('/extract', async (c) => {
     // Note: In a real app, we might want to verify the file exists first
 
     const prompt = `
-      Extract the following information from this medical referral document:
-      1. Patient Name
-      2. Date of Birth (YYYY-MM-DD format if possible)
-      3. Referral Reason (medical condition or symptom)
-      4. Insurance Provider
-
-      Return the result as a valid JSON object with keys: 
-      patientName, dateOfBirth, referralReason, insuranceProvider.
-      Do not include any markdown formatting or explanation, just the JSON string.
+      Carefully read this medical referral document and extract EXACTLY the following information as it appears in the document:
+      
+      1. Patient Full Name (First and Last Name)
+      2. Patient Date of Birth (in YYYY-MM-DD format)
+      3. Referral Reason - the medical condition, diagnosis, or symptoms mentioned
+      4. Insurance Provider/Payer name
+      
+      Look for sections labeled:
+      - "PATIENT INFORMATION" or "Patient Name" for the name
+      - "DOB" or "Date of Birth" for birth date
+      - "REFERRAL TO" or "Reason" for the medical condition
+      - "Insurance" or "Payer" for insurance information
+      
+      Return ONLY a JSON object with these exact keys:
+      {
+        "patientName": "exact name from document",
+        "dateOfBirth": "YYYY-MM-DD",
+        "referralReason": "exact reason from document",
+        "insuranceProvider": "exact insurance name from document"
+      }
+      
+      Do not add any explanation, markdown formatting, or additional text. Just the JSON object.
     `;
 
     const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -105,6 +124,8 @@ app.post('/extract', async (c) => {
       requestId
     });
 
+    console.log('AI Raw Response:', JSON.stringify(response, null, 2));
+
     // Parse the AI response
     let extractedData;
     try {
@@ -114,6 +135,7 @@ app.post('/extract', async (c) => {
       } else {
         // Clean up potential markdown code blocks if the AI adds them
         const cleanJson = response.answer.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
+        console.log('Cleaned JSON string:', cleanJson);
         extractedData = JSON.parse(cleanJson);
       }
     } catch (e) {
@@ -133,6 +155,8 @@ app.post('/extract', async (c) => {
         }, 500);
       }
     }
+
+    console.log('Extracted Data:', extractedData);
 
     return c.json(extractedData);
   } catch (error) {
