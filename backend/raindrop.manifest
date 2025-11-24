@@ -1,11 +1,12 @@
 application "navigator-ai-backend" {
   
   service "api" {
+    visibility = "public"
   }
 
   smartbucket "referral-docs" {}
 
   smartmemory "agent-memory" {}
 
-  smartbucket "referral-docs" {}
+  smartsql "referrals-db" {}
 }

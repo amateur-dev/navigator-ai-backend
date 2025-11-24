@@ -23,7 +23,7 @@ import {
 const upload = multer({ dest: 'uploads/' });
 const client = new Raindrop({ apiKey: process.env.RAINDROP_API_KEY || 'mock-key' });
 
-app.post('/upload', upload.single('file'), async (req, res) => {
+app.post('/upload', upload.single('file'), async (req: any, res) => {
     if (!req.file) {
         return res.status(400).send('No file uploaded');
     }

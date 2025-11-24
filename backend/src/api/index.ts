@@ -69,7 +69,7 @@ app.post('/upload', async (c) => {
   }
 });
 
-// AI Extraction endpoint (mocked for now)
+// AI Extraction endpoint
 app.post('/extract', async (c) => {
   try {
     const body = await c.req.json();
@@ -79,18 +79,65 @@ app.post('/extract', async (c) => {
       return c.text('Filename is required', 400);
     }
 
-    // Mock AI extraction
-    const extractedData = {
-      patientName: 'John Doe',
-      dateOfBirth: '1980-01-01',
-      referralReason: 'Cardiology consultation',
-      insuranceProvider: 'BlueCross',
-    };
+    // Use SmartBucket AI to extract data
+    const smartbucket = c.env.REFERRAL_DOCS;
+
+    // We need the object ID, which in this case is the filename (key)
+    // Note: In a real app, we might want to verify the file exists first
+
+    const prompt = `
+      Extract the following information from this medical referral document:
+      1. Patient Name
+      2. Date of Birth (YYYY-MM-DD format if possible)
+      3. Referral Reason (medical condition or symptom)
+      4. Insurance Provider
+
+      Return the result as a valid JSON object with keys: 
+      patientName, dateOfBirth, referralReason, insuranceProvider.
+      Do not include any markdown formatting or explanation, just the JSON string.
+    `;
+
+    const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const response = await smartbucket.documentChat({
+      objectId: filename,
+      input: prompt,
+      requestId
+    });
+
+    // Parse the AI response
+    let extractedData;
+    try {
+      // Check if answer is already an object
+      if (typeof response.answer === 'object') {
+        extractedData = response.answer;
+      } else {
+        // Clean up potential markdown code blocks if the AI adds them
+        const cleanJson = response.answer.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
+        extractedData = JSON.parse(cleanJson);
+      }
+    } catch (e) {
+      console.error('Failed to parse AI response:', response.answer);
+      // Fallback: try to find JSON-like structure in text
+      try {
+        const jsonMatch = response.answer.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          extractedData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found');
+        }
+      } catch (retryError) {
+        return c.json({
+          error: 'Failed to parse extracted data',
+          rawResponse: response.answer
+        }, 500);
+      }
+    }
 
     return c.json(extractedData);
   } catch (error) {
     console.error('Extract error:', error);
-    return c.text('Extraction failed', 500);
+    return c.text('Extraction failed: ' + (error instanceof Error ? error.message : String(error)), 500);
   }
 });
 
@@ -98,20 +145,294 @@ app.post('/extract', async (c) => {
 app.post('/orchestrate', async (c) => {
   try {
     const body = await c.req.json();
-    // In a real app, we would use the body data to trigger the workflow
-    // const { documentId, referralData } = body;
+    const { patientName, referralReason, insuranceProvider } = body;
 
-    return c.json(MOCK_ORCHESTRATION_RESPONSE);
+    if (!patientName || !referralReason) {
+      return c.json({
+        success: false,
+        error: {
+          code: "INVALID_REQUEST",
+          message: "Missing required fields",
+          statusCode: 400
+        }
+      }, 400);
+    }
+
+    // 1. Determine Specialist based on condition (Expanded keyword matching)
+    let specialty = 'General Practitioner';
+    const reasonLower = referralReason.toLowerCase();
+
+    const specialtyMap: Record<string, string[]> = {
+      'Cardiologist': ['heart', 'cardio', 'chest', 'palpitation', 'pulse', 'pressure'],
+      'Dermatologist': ['skin', 'derma', 'rash', 'itch', 'acne', 'mole', 'lesion'],
+      'Orthopedist': ['bone', 'joint', 'knee', 'back', 'spine', 'fracture', 'ortho', 'shoulder', 'hip'],
+      'Neurologist': ['headache', 'migraine', 'seizure', 'numbness', 'dizzy', 'brain', 'nerve', 'neuro'],
+      'Pediatrician': ['child', 'baby', 'infant', 'toddler', 'pediatric', 'growth'],
+      'Psychiatrist': ['mental', 'depress', 'anxiety', 'mood', 'psych', 'behavior'],
+      'Oncologist': ['cancer', 'tumor', 'lump', 'onco', 'chemo', 'radiation'],
+      'Gastroenterologist': ['stomach', 'gut', 'digest', 'bowel', 'reflux', 'gastro', 'liver'],
+      'Pulmonologist': ['lung', 'breath', 'asthma', 'cough', 'pulmo', 'respiratory'],
+      'Urologist': ['urine', 'bladder', 'kidney', 'prostate', 'uro'],
+      'Ophthalmologist': ['eye', 'vision', 'sight', 'blind', 'optic'],
+      'ENT Specialist': ['ear', 'nose', 'throat', 'sinus', 'hearing'],
+      'Endocrinologist': ['diabetes', 'thyroid', 'hormone', 'sugar', 'endo'],
+      'Rheumatologist': ['arthritis', 'autoimmune', 'lupus', 'rheum'],
+    };
+
+    for (const [spec, keywords] of Object.entries(specialtyMap)) {
+      if (keywords.some(k => reasonLower.includes(k))) {
+        specialty = spec;
+        break;
+      }
+    }
+
+    // 2. Check Insurance (Mock logic)
+    const insuranceStatus = (insuranceProvider && insuranceProvider.toLowerCase().includes('blue')) ? 'Approved' : 'Pending Review';
+
+    // 3. Find Available Slots from DB
+    const db = c.env.REFERRALS_DB as any;
+
+    // Find specialists with the matching specialty
+    // Note: Using inline parameters for MVP as parameter syntax is unconfirmed
+    const specialistsResult = await db.executeQuery({
+      sqlQuery: `SELECT * FROM specialists WHERE specialty = '${specialty}'`
+    });
+
+    let availableSlots: any[] = [];
+    let selectedSpecialist = null;
+
+    // Helper to extract rows from SQL result
+    const getRows = (result: any) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === 'string') {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            console.error('Failed to parse SQL results:', e);
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+
+    // Check if we have results (handling potential response formats)
+    const specialists = getRows(specialistsResult);
+
+    if (specialists.length > 0) {
+      selectedSpecialist = specialists[0];
+
+      // Find slots for this specialist
+      const slotsResult = await db.executeQuery({
+        sqlQuery: `SELECT * FROM slots WHERE specialist_id = ${selectedSpecialist.id} AND is_booked = 0 AND start_time > '${new Date().toISOString()}' ORDER BY start_time ASC LIMIT 3`
+      });
+
+      const slots = getRows(slotsResult);
+      availableSlots = slots.map((slot: any) => slot.start_time);
+    }
+
+    // 4. Create Referral Record in DB
+    const insertQuery = `INSERT INTO referrals (patient_name, condition, insurance_provider, specialist_id, status) 
+       VALUES ('${patientName}', '${referralReason}', '${insuranceProvider}', ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
+
+    await db.executeQuery({ sqlQuery: insertQuery });
+
+    // SQLite specific: Get last ID
+    const idResult = await db.executeQuery({ sqlQuery: 'SELECT last_insert_rowid() as id' });
+    const idRows = getRows(idResult);
+    const referralId = idRows[0]?.id || 'unknown';
+
+    return c.json({
+      success: true,
+      data: {
+        referralId: `ref-${referralId}`,
+        status: 'Processed',
+        specialist: specialty,
+        assignedDoctor: selectedSpecialist ? selectedSpecialist.name : 'Pending Assignment',
+        insuranceStatus,
+        availableSlots,
+        debug: {
+          specialtyUsed: specialty,
+          specialistsFound: specialists.length,
+          slotsFound: availableSlots.length
+        }
+      },
+      message: 'Referral orchestration completed successfully'
+    });
+
   } catch (error) {
     console.error('Orchestrate error:', error);
     return c.json({
       success: false,
       error: {
         code: "ORCHESTRATION_FAILED",
-        message: "Failed to start orchestration",
+        message: "Failed to start orchestration: " + (error instanceof Error ? error.message : String(error)),
         statusCode: 500
       }
     }, 500);
+  }
+});
+
+// Database Seeding Endpoint (For Demo Setup)
+app.post('/seed', async (c) => {
+  try {
+    const db = c.env.REFERRALS_DB as any;
+
+    // 1. Create Tables (SQLite Syntax)
+    await db.executeQuery({
+      sqlQuery: `
+      CREATE TABLE IF NOT EXISTS specialists (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          specialty TEXT NOT NULL,
+          email TEXT
+      );
+    `});
+
+    await db.executeQuery({
+      sqlQuery: `
+      CREATE TABLE IF NOT EXISTS slots (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          specialist_id INTEGER REFERENCES specialists(id),
+          start_time TEXT NOT NULL,
+          is_booked INTEGER DEFAULT 0
+      );
+    `});
+
+    await db.executeQuery({
+      sqlQuery: `
+      CREATE TABLE IF NOT EXISTS referrals (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          patient_name TEXT NOT NULL,
+          dob TEXT,
+          condition TEXT,
+          insurance_provider TEXT,
+          specialist_id INTEGER REFERENCES specialists(id),
+          slot_id INTEGER REFERENCES slots(id),
+          status TEXT DEFAULT 'Pending',
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+      );
+    `});
+
+    // 2. Clear existing data
+    await db.executeQuery({ sqlQuery: 'DELETE FROM slots' });
+    await db.executeQuery({ sqlQuery: 'DELETE FROM referrals' });
+    await db.executeQuery({ sqlQuery: 'DELETE FROM specialists' });
+
+    // 3. Insert Specialists (Fixed list for consistency)
+    const doctors = [
+      // Cardiologists (2)
+      { name: 'Dr. James Mitchell', specialty: 'Cardiologist', email: 'james.mitchell@hospital.com' },
+      { name: 'Dr. Sarah Rodriguez', specialty: 'Cardiologist', email: 'sarah.rodriguez@hospital.com' },
+
+      // Dermatologists (2)
+      { name: 'Dr. Emily Chen', specialty: 'Dermatologist', email: 'emily.chen@hospital.com' },
+      { name: 'Dr. Michael Smith', specialty: 'Dermatologist', email: 'michael.smith@hospital.com' },
+
+      // Orthopedists (2)
+      { name: 'Dr. David Johnson', specialty: 'Orthopedist', email: 'david.johnson@hospital.com' },
+      { name: 'Dr. Jessica Williams', specialty: 'Orthopedist', email: 'jessica.williams@hospital.com' },
+
+      // Neurologists (2)
+      { name: 'Dr. Jennifer Brown', specialty: 'Neurologist', email: 'jennifer.brown@hospital.com' },
+      { name: 'Dr. Robert Jones', specialty: 'Neurologist', email: 'robert.jones@hospital.com' },
+
+      // Pediatricians (2)
+      { name: 'Dr. William Garcia', specialty: 'Pediatrician', email: 'william.garcia@hospital.com' },
+      { name: 'Dr. Elizabeth Miller', specialty: 'Pediatrician', email: 'elizabeth.miller@hospital.com' },
+
+      // Psychiatrists (2)
+      { name: 'Dr. John Davis', specialty: 'Psychiatrist', email: 'john.davis@hospital.com' },
+      { name: 'Dr. Linda Rodriguez', specialty: 'Psychiatrist', email: 'linda.rodriguez@hospital.com' },
+
+      // Oncologists (2)
+      { name: 'Dr. Richard Martinez', specialty: 'Oncologist', email: 'richard.martinez@hospital.com' },
+      { name: 'Dr. Barbara Hernandez', specialty: 'Oncologist', email: 'barbara.hernandez@hospital.com' },
+
+      // Gastroenterologists (2)
+      { name: 'Dr. Thomas Lopez', specialty: 'Gastroenterologist', email: 'thomas.lopez@hospital.com' },
+      { name: 'Dr. Sarah Lee', specialty: 'Gastroenterologist', email: 'sarah.lee@hospital.com' },
+
+      // Pulmonologists (2)
+      { name: 'Dr. Emily White', specialty: 'Pulmonologist', email: 'emily.white@hospital.com' },
+      { name: 'Dr. Michael Brown', specialty: 'Pulmonologist', email: 'michael.brown@hospital.com' },
+
+      // Urologists (2)
+      { name: 'Dr. David Wilson', specialty: 'Urologist', email: 'david.wilson@hospital.com' },
+      { name: 'Dr. Jessica Taylor', specialty: 'Urologist', email: 'jessica.taylor@hospital.com' },
+
+      // Ophthalmologists (2)
+      { name: 'Dr. Jennifer Anderson', specialty: 'Ophthalmologist', email: 'jennifer.anderson@hospital.com' },
+      { name: 'Dr. Robert Thomas', specialty: 'Ophthalmologist', email: 'robert.thomas@hospital.com' },
+
+      // ENT Specialists (2)
+      { name: 'Dr. William Jackson', specialty: 'ENT Specialist', email: 'william.jackson@hospital.com' },
+      { name: 'Dr. Elizabeth Harris', specialty: 'ENT Specialist', email: 'elizabeth.harris@hospital.com' },
+
+      // Endocrinologists (2)
+      { name: 'Dr. John Martin', specialty: 'Endocrinologist', email: 'john.martin@hospital.com' },
+      { name: 'Dr. Linda Thompson', specialty: 'Endocrinologist', email: 'linda.thompson@hospital.com' },
+
+      // Rheumatologists (2)
+      { name: 'Dr. Richard Garcia', specialty: 'Rheumatologist', email: 'richard.garcia@hospital.com' },
+      { name: 'Dr. Barbara Martinez', specialty: 'Rheumatologist', email: 'barbara.martinez@hospital.com' },
+
+      // General Practitioners (2)
+      { name: 'Dr. Thomas Robinson', specialty: 'General Practitioner', email: 'thomas.robinson@hospital.com' },
+      { name: 'Dr. Sarah Clark', specialty: 'General Practitioner', email: 'sarah.clark@hospital.com' },
+    ];
+
+    // Insert all doctors
+    for (const doc of doctors) {
+      await db.executeQuery({
+        sqlQuery: `INSERT INTO specialists (name, specialty, email) VALUES ('${doc.name}', '${doc.specialty}', '${doc.email}')`
+      });
+    }
+
+    // Get all IDs for slot generation
+    const allSpecsRes = await db.executeQuery({ sqlQuery: 'SELECT id FROM specialists' });
+    const getRows = (result: any) => { // Re-define getRows locally for seed endpoint
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === 'string') {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            console.error('Failed to parse SQL results:', e);
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+    const allSpecs = getRows(allSpecsRes);
+
+    // 4. Insert Slots (Future dates) for random specialists
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Generate slots for 50% of doctors
+    for (const doc of allSpecs) {
+      if (Math.random() > 0.5) continue;
+
+      for (let i = 0; i < 3; i++) {
+        const slotDate = new Date(tomorrow);
+        slotDate.setDate(slotDate.getDate() + Math.floor(Math.random() * 7)); // Random day in next week
+        slotDate.setHours(9 + Math.floor(Math.random() * 8), 0, 0, 0); // Random hour 9-17
+
+        await db.executeQuery({ sqlQuery: `INSERT INTO slots (specialist_id, start_time) VALUES (${doc.id}, '${slotDate.toISOString()}')` });
+      }
+    }
+
+    return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists` });
+  } catch (error) {
+    console.error('Seed error:', error);
+    return c.json({ error: 'Seeding failed: ' + (error instanceof Error ? error.message : String(error)) }, 500);
   }
 });
 
@@ -153,25 +474,114 @@ app.get('/referral/:id/logs', (c) => {
 });
 
 // Patient Confirmation endpoint
+// Confirmation endpoint - Demo mode (shows what would be sent)
 app.post('/confirm', async (c) => {
   try {
     const body = await c.req.json();
-    const { patientName, slot } = body;
+    const {
+      referralId,
+      patientName,
+      patientEmail,
+      patientPhone,
+      doctorName,
+      specialty,
+      appointmentDate,
+      appointmentTime,
+      facilityName,
+      facilityAddress
+    } = body;
 
-    if (!patientName || !slot) {
-      return c.text('Missing required fields', 400);
+    if (!patientName || !doctorName) {
+      return c.json({
+        success: false,
+        error: 'Missing required fields: patientName and doctorName'
+      }, 400);
     }
 
-    // Mock SMS/Email dispatch
-    console.log(`Sending confirmation to ${patientName} for slot ${slot}`);
+    // Format appointment datetime
+    const apptDate = appointmentDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 2 days from now
+    const apptTime = appointmentTime || '10:00 AM';
+    const facility = facilityName || 'Downtown Medical Center';
+    const address = facilityAddress || '123 Main Street, Suite 200, New York, NY 10001';
+    const phone = patientPhone || '+1-555-0123';
+    const email = patientEmail || 'patient@email.com';
 
+    // Generate realistic SMS message
+    const smsMessage = `Hi ${patientName}! Your ${specialty || 'medical'} appointment with ${doctorName} is confirmed for ${apptDate} at ${apptTime} at ${facility}. Location: ${address}. Questions? Call (555) 123-4567. Reply CANCEL to reschedule.`;
+
+    // Generate realistic email
+    const emailSubject = `Appointment Confirmed - ${doctorName}`;
+    const emailBody = `Dear ${patientName},
+
+Your appointment has been successfully confirmed!
+
+APPOINTMENT DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Doctor:        ${doctorName}
+Specialty:     ${specialty || 'General Practice'}
+Date & Time:   ${apptDate} at ${apptTime}
+Location:      ${facility}
+Address:       ${address}
+
+IMPORTANT REMINDERS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Please arrive 15 minutes early for check-in
+• Bring your insurance card and photo ID
+• Bring a list of current medications
+• If you need to cancel or reschedule, please call us at least 24 hours in advance
+
+CONTACT INFORMATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phone: (555) 123-4567
+Email: appointments@hospital.com
+Portal: https://patient-portal.hospital.com
+
+We look forward to seeing you!
+
+Best regards,
+${facility} Team
+
+---
+Referral ID: ${referralId || 'N/A'}
+This is an automated confirmation. Please do not reply to this email.`;
+
+    // Return demo response
     return c.json({
-      message: 'Confirmation sent successfully',
-      status: 'Sent',
+      success: true,
+      confirmationSent: true,
+      referralId: referralId || 'demo-' + Date.now(),
+      notifications: {
+        sms: {
+          to: phone,
+          message: smsMessage,
+          length: smsMessage.length,
+          estimatedCost: '$0.0075'
+        },
+        email: {
+          to: email,
+          subject: emailSubject,
+          body: emailBody,
+          format: 'text/plain'
+        }
+      },
+      appointmentDetails: {
+        patient: patientName,
+        doctor: doctorName,
+        specialty: specialty || 'General Practice',
+        dateTime: `${apptDate} at ${apptTime}`,
+        location: facility,
+        address: address
+      },
+      method: 'DEMO_MODE',
+      message: 'In production, SMS and Email would be sent via Twilio/SendGrid',
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Confirm error:', error);
-    return c.text('Confirmation failed', 500);
+    return c.json({
+      success: false,
+      error: 'Confirmation failed: ' + (error instanceof Error ? error.message : String(error))
+    }, 500);
   }
 });
 
