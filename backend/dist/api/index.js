@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "36f66c0078a7e904029323bedd49267538c25731"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "839f10a4223e898a45b106f16b60e99f2a872a6c"; 
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __esm = (fn, res) => function __init() {
@@ -3737,7 +3737,7 @@ app.post("/extract", async (c) => {
     }
     const Cerebras2 = (await Promise.resolve().then(() => (init_cerebras_cloud_sdk(), cerebras_cloud_sdk_exports))).default;
     const cerebras = new Cerebras2({
-      apiKey: "csk-k2xkk65hrwn46ypvhepyf49mhjx4f2hc3k6ywxcrhkt6ttvt",
+      apiKey: process.env.CEREBRAS_API_KEY || "csk-k2xkk65hrwn46ypvhepyf49mhjx4f2hc3k6ywxcrhkt6ttvt",
       warmTCPConnection: false
     });
     const originalFilename = pdfObject.customMetadata?.originalName || "medical referral document";

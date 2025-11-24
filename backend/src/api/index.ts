@@ -100,7 +100,7 @@ app.post('/extract', async (c) => {
     // Initialize CEREBRAS client for intelligent extraction
     const Cerebras = (await import('@cerebras/cerebras_cloud_sdk')).default;
     const cerebras = new Cerebras({
-      apiKey: 'csk-k2xkk65hrwn46ypvhepyf49mhjx4f2hc3k6ywxcrhkt6ttvt',
+      apiKey: process.env.CEREBRAS_API_KEY || 'csk-k2xkk65hrwn46ypvhepyf49mhjx4f2hc3k6ywxcrhkt6ttvt',
       warmTCPConnection: false
     });
 
