@@ -100,6 +100,25 @@ export interface Message {
 }
 
 /**
+ * Pagination structure
+ */
+export interface Pagination {
+  limit: number
+  offset: number
+  total: number
+  hasMore: boolean
+}
+
+/**
+ * Referral logs response
+ */
+export interface ReferralLogsResponse {
+  referralId: string
+  logs: ActionLogEntry[]
+  pagination: Pagination
+}
+
+/**
  * Detailed referral data structure
  */
 export interface ReferralDetails extends Referral {

@@ -113,9 +113,6 @@ importers:
       '@workos-inc/node':
         specifier: ^7.73.0
         version: 7.73.0(next@16.0.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0))
-      better-start:
-        specifier: 'link:'
-        version: 'link:'
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1

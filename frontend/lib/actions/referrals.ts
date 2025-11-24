@@ -1,38 +1,44 @@
-'use server'
+"use server";
 
-import referralDetailsData from '@/data/app/referral-details.json'
-import referralsData from '@/data/app/referrals.json'
-import type { Referral, ReferralDetails, ReferralsResponse } from '@/types/api'
+import referralDetailsData from "@/data/app/referral-details.json";
+import type { Referral, ReferralDetails, ReferralLogsResponse, ReferralsResponse } from "@/types/api";
 
-export type ReferralData = Referral
+export type ReferralData = Referral;
 
 export async function getReferrals(): Promise<ReferralsResponse> {
   try {
-    // In a real application, this would fetch from a database
-    // For now, we're using the static JSON data
-    const referrals = referralsData as Referral[]
-
-    return {
-      referrals,
-      total: referrals.length
-    }
+    const response = await fetch(`${process.env.BACKEND_BASE}/referrals`);
+    const data = await response.json();
+    return data?.data as ReferralsResponse;
   } catch {
     return {
       referrals: [],
-      total: 0
-    }
+      total: 0,
+    };
   }
 }
 
-export async function getReferralDetails(id: string): Promise<ReferralDetails | null> {
+export async function getReferralDetails(
+  id: string
+): Promise<ReferralDetails | null> {
   try {
-    // In a real application, this would fetch from a database
-    // For now, we're using the static JSON data
-    const details = referralDetailsData as ReferralDetails[]
-    const referral = details.find((r) => r.id === id)
+    const response = await fetch(`${process.env.BACKEND_BASE}/referral/${id}`);
+    const data = await response.json();
 
-    return referral || null
+    console.log(data);
+
+    return data?.data as ReferralDetails | null;
   } catch {
-    return null
+    return null;
+  }
+}
+
+export async function getReferralLogs(id: string): Promise<ReferralLogsResponse | null> {
+  try {
+    const response = await fetch(`${process.env.BACKEND_BASE}/referral/${id}/logs`);
+    const data = await response.json();
+    return data?.data as ReferralLogsResponse | null;
+  } catch {
+    return null;
   }
 }

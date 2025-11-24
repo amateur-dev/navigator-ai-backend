@@ -8,14 +8,18 @@ interface AppContextType {
   ping: string | null
 }
 
+// QueryClient with proper garbage collection and cache limits
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       refetchOnWindowFocus: false,
       refetchOnMount: false,
-      refetchOnReconnect: false
-    }
-  }
+      refetchOnReconnect: false,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes - cache cleanup time
+      retry: 1,
+    },
+  },
 })
 
 export const AppContext = React.createContext<AppContextType | null>(null)

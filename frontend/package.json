@@ -1,5 +1,5 @@
 {
-  "name": "better-start",
+  "name": "navigator-ai",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -49,7 +49,6 @@
     "@tanstack/react-table": "^8.21.3",
     "@workos-inc/authkit-nextjs": "^2.11.0",
     "@workos-inc/node": "^7.73.0",
-    "better-start": "link:",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

@@ -1,8 +1,8 @@
-import { Home, Inbox, List, Settings, Users } from 'lucide-react'
-import Link from 'next/link'
 import { ReferralCreateNew } from '@/app/(app)/app/referrals/referral-create-new'
 import { AppUser } from '@/components/app'
 import { Button, Logo } from '@/components/ui'
+import { Home, Inbox, List, Settings, Users } from 'lucide-react'
+import Link from 'next/link'
 
 export const AppHeader = () => {
   return (
@@ -25,12 +25,6 @@ export const AppHeader = () => {
                 <span>Referrals</span>
               </Button>
             </Link>
-            <Link href="/app/patients">
-              <Button variant="outline" className="h-10">
-                <Users className="size-4" strokeWidth={1.8} />
-                <span>Patients</span>
-              </Button>
-            </Link>
           </div>
         </div>
 
@@ -38,10 +32,6 @@ export const AppHeader = () => {
           <ReferralCreateNew />
 
           <div className="flex items-center gap-1">
-            <Button variant="outline" className="h-10">
-              <span className="sr-only">Inbox</span>
-              <Inbox className="size-4" strokeWidth={1.8} />
-            </Button>
             <Link href="/app/settings">
               <Button variant="outline" className="h-10">
                 <span className="sr-only">Settings</span>
