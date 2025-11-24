@@ -45,7 +45,10 @@ app.post('/upload', async (c) => {
     const smartbucket = c.env.REFERRAL_DOCS;
     const arrayBuffer = await file.arrayBuffer();
 
-    await smartbucket.put(file.name, new Uint8Array(arrayBuffer), {
+    // Generate unique document ID
+    const documentId = `doc-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+
+    await smartbucket.put(documentId, new Uint8Array(arrayBuffer), {
       httpMetadata: {
         contentType: file.type || 'application/pdf',
       },
@@ -55,11 +58,11 @@ app.post('/upload', async (c) => {
       }
     });
 
-    // Return success - extraction will happen via /extract endpoint
+    // Return document ID for subsequent API calls
     return c.json({
       success: true,
       message: 'File uploaded successfully',
-      filename: file.name,
+      id: documentId,
       uploadedAt: new Date().toISOString()
     });
   } catch (error) {
@@ -80,18 +83,18 @@ app.post('/upload', async (c) => {
 app.post('/extract', async (c) => {
   try {
     const body = await c.req.json();
-    const { filename } = body;
+    const { id } = body;
 
-    if (!filename) {
-      return c.json({ error: 'Filename is required' }, 400);
+    if (!id) {
+      return c.json({ error: 'Document ID is required' }, 400);
     }
 
-    // Get the PDF from SmartBucket (verify it exists)
+    // Get the PDF from SmartBucket using document ID
     const smartbucket = c.env.REFERRAL_DOCS;
-    const pdfObject = await smartbucket.get(filename);
+    const pdfObject = await smartbucket.get(id);
 
     if (!pdfObject) {
-      return c.json({ error: 'File not found in storage' }, 404);
+      return c.json({ error: 'Document not found' }, 404);
     }
 
     // Initialize CEREBRAS client for intelligent extraction
@@ -101,9 +104,11 @@ app.post('/extract', async (c) => {
       warmTCPConnection: false
     });
 
+    // Get original filename from metadata if available
+    const originalFilename = pdfObject.customMetadata?.originalName || 'medical referral document';
+
     // Smart context-aware extraction
-    // For demo purposes, we'll use the filename to guide CEREBRAS
-    const prompt = `You are analyzing a medical referral document titled "${filename}".
+    const prompt = `You are analyzing a medical referral document titled "${originalFilename}".
 
 Based on typical medical referral documents, extract realistic patient information in this exact JSON format:
 

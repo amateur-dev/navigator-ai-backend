@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "dc05b7a9a3f2c9f162f3d84ead77ea96e62d7a84"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "36f66c0078a7e904029323bedd49267538c25731"; 
 var __defProp = Object.defineProperty;
 var __getOwnPropNames = Object.getOwnPropertyNames;
 var __esm = (fn, res) => function __init() {
@@ -3695,7 +3695,8 @@ app.post("/upload", async (c) => {
     }
     const smartbucket = c.env.REFERRAL_DOCS;
     const arrayBuffer = await file.arrayBuffer();
-    await smartbucket.put(file.name, new Uint8Array(arrayBuffer), {
+    const documentId = `doc-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+    await smartbucket.put(documentId, new Uint8Array(arrayBuffer), {
       httpMetadata: {
         contentType: file.type || "application/pdf"
       },
@@ -3707,7 +3708,7 @@ app.post("/upload", async (c) => {
     return c.json({
       success: true,
       message: "File uploaded successfully",
-      filename: file.name,
+      id: documentId,
       uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
     });
   } catch (error) {
@@ -3725,21 +3726,22 @@ app.post("/upload", async (c) => {
 app.post("/extract", async (c) => {
   try {
     const body = await c.req.json();
-    const { filename } = body;
-    if (!filename) {
-      return c.json({ error: "Filename is required" }, 400);
+    const { id } = body;
+    if (!id) {
+      return c.json({ error: "Document ID is required" }, 400);
     }
     const smartbucket = c.env.REFERRAL_DOCS;
-    const pdfObject = await smartbucket.get(filename);
+    const pdfObject = await smartbucket.get(id);
     if (!pdfObject) {
-      return c.json({ error: "File not found in storage" }, 404);
+      return c.json({ error: "Document not found" }, 404);
     }
     const Cerebras2 = (await Promise.resolve().then(() => (init_cerebras_cloud_sdk(), cerebras_cloud_sdk_exports))).default;
     const cerebras = new Cerebras2({
       apiKey: "csk-k2xkk65hrwn46ypvhepyf49mhjx4f2hc3k6ywxcrhkt6ttvt",
       warmTCPConnection: false
     });
-    const prompt = `You are analyzing a medical referral document titled "${filename}".
+    const originalFilename = pdfObject.customMetadata?.originalName || "medical referral document";
+    const prompt = `You are analyzing a medical referral document titled "${originalFilename}".
 
 Based on typical medical referral documents, extract realistic patient information in this exact JSON format:
 

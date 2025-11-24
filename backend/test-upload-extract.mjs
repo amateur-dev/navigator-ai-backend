@@ -13,7 +13,7 @@ const PDF_FILE = path.join(__dirname, 'Medical Referral Document 3.pdf');
 console.log('Testing Upload → Wait → Extract workflow\n');
 
 async function testWithDelay() {
-    let filename = '';
+    let documentId = '';
 
     // STEP 1: Upload
     console.log('1️⃣  Uploading PDF...');
@@ -32,7 +32,8 @@ async function testWithDelay() {
         console.log(`   Status: ${uploadResponse.status}`);
         console.log(`   Response:`, JSON.stringify(uploadResult, null, 2));
 
-        filename = uploadResult.filename || 'Medical Referral Document 3.pdf';
+        documentId = uploadResult.id;
+        console.log(`   Document ID: ${documentId}`);
         console.log('   ✅ Upload complete\n');
     } catch (error) {
         console.error('   ❌ Upload failed:', error.message);
@@ -50,7 +51,7 @@ async function testWithDelay() {
         const extractResponse = await fetch(`${API_URL}/extract`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filename })
+            body: JSON.stringify({ id: documentId })
         });
 
         const extractResult = await extractResponse.json();
