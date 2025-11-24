@@ -55,7 +55,13 @@ app.post('/upload', async (c) => {
       }
     });
 
-    return c.json(MOCK_UPLOAD_RESPONSE);
+    // Return success - extraction will happen via /extract endpoint
+    return c.json({
+      success: true,
+      message: 'File uploaded successfully',
+      filename: file.name,
+      uploadedAt: new Date().toISOString()
+    });
   } catch (error) {
     console.error('Upload error:', error);
     return c.json({

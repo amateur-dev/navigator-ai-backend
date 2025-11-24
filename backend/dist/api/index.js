@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "a63a33c4f0e9eb7d2e775fe59fd32bd8835525d3"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "360f74e1cc3b512f847b7990a4485c1733ea00ac"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1660,32 +1660,6 @@ var logger = (fn = console.log) => {
 };
 
 // src/api/mockData.ts
-var MOCK_EXTRACTED_DATA = {
-  patientFirstName: "Sarah",
-  patientLastName: "Johnson",
-  patientEmail: "sarah.johnson@email.com",
-  age: 58,
-  specialty: "Cardiology",
-  payer: "Blue Cross Blue Shield",
-  plan: "Blue Cross PPO Plus",
-  urgency: "urgent",
-  appointmentDate: null,
-  referralDate: "2025-11-10T14:00:00Z",
-  providerName: "Dr. James Mitchell",
-  facilityName: "Downtown Medical Center",
-  reason: "Chest pain and irregular heartbeat"
-};
-var MOCK_UPLOAD_RESPONSE = {
-  success: true,
-  data: {
-    extractedData: MOCK_EXTRACTED_DATA,
-    confidence: 0.95,
-    documentId: "doc-12345678",
-    needsReview: false,
-    warnings: []
-  },
-  message: "Document processed successfully"
-};
 var MOCK_REFERRALS_LIST = {
   success: true,
   data: {
@@ -2046,7 +2020,12 @@ app.post("/upload", async (c) => {
         uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
       }
     });
-    return c.json(MOCK_UPLOAD_RESPONSE);
+    return c.json({
+      success: true,
+      message: "File uploaded successfully",
+      filename: file.name,
+      uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
+    });
   } catch (error) {
     console.error("Upload error:", error);
     return c.json({
