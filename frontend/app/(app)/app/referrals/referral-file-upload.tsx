@@ -1,12 +1,12 @@
 'use client'
 
-import { Button, Skeleton } from '@/components/ui'
-import { uploadReferralFile } from '@/lib/actions/referrals'
-import { cn } from '@/utils/cn'
 import { CheckCircle2, FileText, Loader2, X, XCircle } from 'lucide-react'
 import React from 'react'
 import { useDropzone } from 'react-dropzone'
 import { toast } from 'sonner'
+import { Button, Skeleton } from '@/components/ui'
+import { uploadReferralFile } from '@/lib/actions/referrals'
+import { cn } from '@/utils/cn'
 
 interface UploadedFile {
   file: File
