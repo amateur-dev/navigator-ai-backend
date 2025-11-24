@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "be36c00fe303e91dad2ba043b83ec3fa77dd27b0"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "62825caf8c647a2fe2d1c50447bdeab7602c6975"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -2260,34 +2260,57 @@ app.post("/seed", async (c) => {
     await db.executeQuery({ sqlQuery: "DELETE FROM slots" });
     await db.executeQuery({ sqlQuery: "DELETE FROM referrals" });
     await db.executeQuery({ sqlQuery: "DELETE FROM specialists" });
-    const specialties = [
-      "Cardiologist",
-      "Dermatologist",
-      "Orthopedist",
-      "Neurologist",
-      "Pediatrician",
-      "Psychiatrist",
-      "Oncologist",
-      "Gastroenterologist",
-      "Pulmonologist",
-      "Urologist",
-      "Ophthalmologist",
-      "ENT Specialist",
-      "Endocrinologist",
-      "Rheumatologist",
-      "General Practitioner"
+    const doctors = [
+      // Cardiologists (2)
+      { name: "Dr. James Mitchell", specialty: "Cardiologist", email: "james.mitchell@hospital.com" },
+      { name: "Dr. Sarah Rodriguez", specialty: "Cardiologist", email: "sarah.rodriguez@hospital.com" },
+      // Dermatologists (2)
+      { name: "Dr. Emily Chen", specialty: "Dermatologist", email: "emily.chen@hospital.com" },
+      { name: "Dr. Michael Smith", specialty: "Dermatologist", email: "michael.smith@hospital.com" },
+      // Orthopedists (2)
+      { name: "Dr. David Johnson", specialty: "Orthopedist", email: "david.johnson@hospital.com" },
+      { name: "Dr. Jessica Williams", specialty: "Orthopedist", email: "jessica.williams@hospital.com" },
+      // Neurologists (2)
+      { name: "Dr. Jennifer Brown", specialty: "Neurologist", email: "jennifer.brown@hospital.com" },
+      { name: "Dr. Robert Jones", specialty: "Neurologist", email: "robert.jones@hospital.com" },
+      // Pediatricians (2)
+      { name: "Dr. William Garcia", specialty: "Pediatrician", email: "william.garcia@hospital.com" },
+      { name: "Dr. Elizabeth Miller", specialty: "Pediatrician", email: "elizabeth.miller@hospital.com" },
+      // Psychiatrists (2)
+      { name: "Dr. John Davis", specialty: "Psychiatrist", email: "john.davis@hospital.com" },
+      { name: "Dr. Linda Rodriguez", specialty: "Psychiatrist", email: "linda.rodriguez@hospital.com" },
+      // Oncologists (2)
+      { name: "Dr. Richard Martinez", specialty: "Oncologist", email: "richard.martinez@hospital.com" },
+      { name: "Dr. Barbara Hernandez", specialty: "Oncologist", email: "barbara.hernandez@hospital.com" },
+      // Gastroenterologists (2)
+      { name: "Dr. Thomas Lopez", specialty: "Gastroenterologist", email: "thomas.lopez@hospital.com" },
+      { name: "Dr. Sarah Lee", specialty: "Gastroenterologist", email: "sarah.lee@hospital.com" },
+      // Pulmonologists (2)
+      { name: "Dr. Emily White", specialty: "Pulmonologist", email: "emily.white@hospital.com" },
+      { name: "Dr. Michael Brown", specialty: "Pulmonologist", email: "michael.brown@hospital.com" },
+      // Urologists (2)
+      { name: "Dr. David Wilson", specialty: "Urologist", email: "david.wilson@hospital.com" },
+      { name: "Dr. Jessica Taylor", specialty: "Urologist", email: "jessica.taylor@hospital.com" },
+      // Ophthalmologists (2)
+      { name: "Dr. Jennifer Anderson", specialty: "Ophthalmologist", email: "jennifer.anderson@hospital.com" },
+      { name: "Dr. Robert Thomas", specialty: "Ophthalmologist", email: "robert.thomas@hospital.com" },
+      // ENT Specialists (2)
+      { name: "Dr. William Jackson", specialty: "ENT Specialist", email: "william.jackson@hospital.com" },
+      { name: "Dr. Elizabeth Harris", specialty: "ENT Specialist", email: "elizabeth.harris@hospital.com" },
+      // Endocrinologists (2)
+      { name: "Dr. John Martin", specialty: "Endocrinologist", email: "john.martin@hospital.com" },
+      { name: "Dr. Linda Thompson", specialty: "Endocrinologist", email: "linda.thompson@hospital.com" },
+      // Rheumatologists (2)
+      { name: "Dr. Richard Garcia", specialty: "Rheumatologist", email: "richard.garcia@hospital.com" },
+      { name: "Dr. Barbara Martinez", specialty: "Rheumatologist", email: "barbara.martinez@hospital.com" },
+      // General Practitioners (2)
+      { name: "Dr. Thomas Robinson", specialty: "General Practitioner", email: "thomas.robinson@hospital.com" },
+      { name: "Dr. Sarah Clark", specialty: "General Practitioner", email: "sarah.clark@hospital.com" }
     ];
-    const firstNames = ["James", "Sarah", "Emily", "Michael", "David", "Jessica", "Jennifer", "Robert", "William", "Elizabeth", "John", "Linda", "Richard", "Barbara", "Thomas"];
-    const lastNames = ["Mitchell", "Lee", "Chen", "Smith", "Johnson", "Williams", "Brown", "Jones", "Garcia", "Miller", "Davis", "Rodriguez", "Martinez", "Hernandez", "Lopez"];
-    const specialistIds = [];
-    for (const spec of specialties) {
-      for (let i = 0; i < 2; i++) {
-        const fn = firstNames[Math.floor(Math.random() * firstNames.length)];
-        const ln = lastNames[Math.floor(Math.random() * lastNames.length)];
-        const name = `Dr. ${fn} ${ln}`;
-        const email = `${fn.toLowerCase()}.${ln.toLowerCase()}@hospital.com`;
-        await db.executeQuery({ sqlQuery: `INSERT INTO specialists (name, specialty, email) VALUES ('${name}', '${spec}', '${email}')` });
-      }
+    for (const doc of doctors) {
+      await db.executeQuery({
+        sqlQuery: `INSERT INTO specialists (name, specialty, email) VALUES ('${doc.name}', '${doc.specialty}', '${doc.email}')`
+      });
     }
     const allSpecsRes = await db.executeQuery({ sqlQuery: "SELECT id FROM specialists" });
     const getRows = (result) => {

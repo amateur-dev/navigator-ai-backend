@@ -30,7 +30,9 @@ Each specialty is matched using the following keywords in patient referral reaso
 | Rheumatologist | arthritis, autoimmune, lupus, rheum |
 | General Practitioner | (default for unmatched conditions) |
 
-## Doctors List (Sample Seeding)
+## Doctors List
+
+**Note**: This is the **exact, fixed list** of doctors seeded into the database. Every time you run `/seed`, you get these same 30 doctors.
 
 ### Cardiology (2 doctors)
 - Dr. James Mitchell - james.mitchell@hospital.com
@@ -62,35 +64,35 @@ Each specialty is matched using the following keywords in patient referral reaso
 
 ### Gastroenterology (2 doctors)
 - Dr. Thomas Lopez - thomas.lopez@hospital.com
-- Dr. James Lee - james.lee@hospital.com
+- Dr. Sarah Lee - sarah.lee@hospital.com
 
 ### Pulmonology (2 doctors)
-- Dr. Sarah Chen - sarah.chen@hospital.com
-- Dr. Emily Smith - emily.smith@hospital.com
+- Dr. Emily White - emily.white@hospital.com
+- Dr. Michael Brown - michael.brown@hospital.com
 
 ### Urology (2 doctors)
-- Dr. Michael Johnson - michael.johnson@hospital.com
-- Dr. David Williams - david.williams@hospital.com
+- Dr. David Wilson - david.wilson@hospital.com
+- Dr. Jessica Taylor - jessica.taylor@hospital.com
 
 ### Ophthalmology (2 doctors)
-- Dr. Jessica Brown - jessica.brown@hospital.com
-- Dr. Jennifer Jones - jennifer.jones@hospital.com
+- Dr. Jennifer Anderson - jennifer.anderson@hospital.com
+- Dr. Robert Thomas - robert.thomas@hospital.com
 
 ### ENT (Ear, Nose, Throat) (2 doctors)
-- Dr. Robert Garcia - robert.garcia@hospital.com
-- Dr. William Miller - william.miller@hospital.com
+- Dr. William Jackson - william.jackson@hospital.com
+- Dr. Elizabeth Harris - elizabeth.harris@hospital.com
 
 ### Endocrinology (2 doctors)
-- Dr. Elizabeth Davis - elizabeth.davis@hospital.com
-- Dr. John Martinez - john.martinez@hospital.com
+- Dr. John Martin - john.martin@hospital.com
+- Dr. Linda Thompson - linda.thompson@hospital.com
 
 ### Rheumatology (2 doctors)
-- Dr. Linda Hernandez - linda.hernandez@hospital.com
-- Dr. Richard Lopez - richard.lopez@hospital.com
+- Dr. Richard Garcia - richard.garcia@hospital.com
+- Dr. Barbara Martinez - barbara.martinez@hospital.com
 
 ### General Practice (2 doctors)
-- Dr. Barbara Mitchell - barbara.mitchell@hospital.com
-- Dr. Thomas Lee - thomas.lee@hospital.com
+- Dr. Thomas Robinson - thomas.robinson@hospital.com
+- Dr. Sarah Clark - sarah.clark@hospital.com
 
 ---
 
@@ -122,6 +124,4 @@ Or run the test script:
 node test-raindrop-seed.mjs
 ```
 
----
 
-**Note**: Doctor names are randomly generated from a pool of first and last names during each seeding. The actual names in your database may differ from this sample list.
