@@ -1,19 +1,19 @@
-'use client'
+"use client";
 
-import { format } from 'date-fns'
-import { X } from 'lucide-react'
-import { useDropzone } from 'react-dropzone'
-import { Badge, Button } from '@/components/ui'
+import { Badge, Button } from "@/components/ui";
+import { format } from "date-fns";
+import { X } from "lucide-react";
+import { useDropzone } from "react-dropzone";
 
 export const ReferralFileUpload = () => {
-  const { acceptedFiles, getRootProps, getInputProps } = useDropzone()
+  const { acceptedFiles, getRootProps, getInputProps } = useDropzone();
 
   return (
     <div className="flex px-4 py-2 flex-1 flex-col gap-4">
       <div
         {...getRootProps({
           className:
-            'dropzone flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 w-full bg-background items-center transition-all hover:bg-secondary/5 flex-1'
+            "dropzone flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 w-full bg-background items-center transition-all hover:bg-secondary/5 flex-1",
         })}
       >
         <input {...getInputProps()} />
@@ -34,7 +34,12 @@ export const ReferralFileUpload = () => {
           <div className="mt-4 flex text-sm/6 text-gray-600">
             <span className="relative cursor-pointer bg-transparent font-medium text-default focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-default hover:text-default/90 text-base">
               <span>Upload a file</span>
-              <input id="file-upload" type="file" name="file-upload" className="sr-only" />
+              <input
+                id="file-upload"
+                type="file"
+                name="file-upload"
+                className="sr-only"
+              />
             </span>
             <p className="pl-1 text-base text-default">or drag and drop</p>
           </div>
@@ -45,8 +50,7 @@ export const ReferralFileUpload = () => {
       {acceptedFiles.length > 0 && (
         <div className="grid w-full gap-1">
           {acceptedFiles.map((file) => {
-            console.log(file)
-            const fileSizeInMB = file.size / 1024 / 1024
+            const fileSizeInMB = file.size / 1024 / 1024;
 
             return (
               <div
@@ -61,7 +65,8 @@ export const ReferralFileUpload = () => {
                     </Badge>
                   </div>
                   <span className="text-xs font-medium text-muted-foreground">
-                    Last Modified on {format(new Date(file.lastModified), 'MM/dd/yyyy')}
+                    Last Modified on{" "}
+                    {format(new Date(file.lastModified), "MM/dd/yyyy")}
                   </span>
                 </div>
                 <Button variant="ghost" size="sm" className="h-9 px-2 gap-1.5">
@@ -69,10 +74,10 @@ export const ReferralFileUpload = () => {
                   <X className="size-3" strokeWidth={2} />
                 </Button>
               </div>
-            )
+            );
           })}
         </div>
       )}
     </div>
-  )
-}
+  );
+};

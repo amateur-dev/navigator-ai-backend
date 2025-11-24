@@ -2,9 +2,10 @@
 
 import { Badge, Button, ScrollArea } from "@/components/ui";
 import { getReferralLogs } from "@/lib/actions/referrals";
-import { formatDate, formatRelativeTime, getEventIcon } from "@/utils";
+import { formatRelativeTime } from "@/utils";
 import { useQuery } from "@tanstack/react-query";
 import * as React from "react";
+import { getEventIcon } from "./referral-icons";
 
 interface ReferralLogsProps {
   referralId: string;

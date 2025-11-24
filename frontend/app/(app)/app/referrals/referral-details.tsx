@@ -2,14 +2,13 @@
 
 import { Avatar, AvatarFallback, Badge, Separator } from "@/components/ui";
 import type { ReferralDetails as ReferralDetailsType } from "@/types/api";
+import { formatDate, getInitials } from "@/utils";
+import * as React from "react";
 import {
-  formatDate,
-  getInitials,
   getStatusColor,
   getStepIcon,
   getUrgencyColor,
-} from "@/utils";
-import * as React from "react";
+} from "./referral-badges";
 import { ReferralLogs } from "./referral-logs";
 
 interface ReferralDetailsProps {
