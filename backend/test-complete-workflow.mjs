@@ -43,26 +43,9 @@ async function runCompleteWorkflow() {
         console.log('Response:');
         console.log(JSON.stringify(uploadResult, null, 2));
 
-        uploadedFilename = 'Medical Referral Document 3.pdf';
+        uploadedFilename = uploadResult.filename || 'Medical Referral Document 3.pdf';
 
-        // Extract data from upload response (Raindrop returns mock extraction data)
-        if (uploadResult.data && uploadResult.data.extractedData) {
-            const extracted = uploadResult.data.extractedData;
-            extractedData = {
-                patientName: `${extracted.patientFirstName} ${extracted.patientLastName}`,
-                dateOfBirth: null, // Not in upload response
-                referralReason: extracted.reason,
-                insuranceProvider: extracted.payer
-            };
-
-            console.log('\n✅ Upload successful!');
-            console.log('\nExtracted Data from Upload:');
-            console.log(`   Patient: ${extractedData.patientName}`);
-            console.log(`   Condition: ${extractedData.referralReason}`);
-            console.log(`   Insurance: ${extractedData.insuranceProvider}\n`);
-        } else {
-            console.log('\n✅ Upload successful!\n');
-        }
+        console.log('\n✅ Upload successful!\n');
     } catch (error) {
         console.error('❌ Upload failed:', error.message);
         return;
@@ -71,14 +54,35 @@ async function runCompleteWorkflow() {
     // Wait a moment for processing
     await new Promise(resolve => setTimeout(resolve, 2000));
 
-    // ═══════════════════════════════════════════════════════════════
-    // STEP 2: EXTRACT DATA
-    // ═══════════════════════════════════════════════════════════════
     console.log('\n┌─────────────────────────────────────────────────────────────┐');
-    console.log('│ STEP 2: DATA ALREADY EXTRACTED FROM UPLOAD                  │');
+    console.log('│ STEP 2: EXTRACT PATIENT DATA (CEREBRAS AI)                 │');
     console.log('└─────────────────────────────────────────────────────────────┘\n');
-    console.log('ℹ️  The /upload endpoint already extracted patient data using AI.');
-    console.log('   No need to call /extract separately.\n');
+
+    try {
+        const extractResponse = await fetch(`${API_URL}/extract`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filename: uploadedFilename })
+        });
+
+        const extractResult = await extractResponse.json();
+        console.log(`Status: ${extractResponse.status}`);
+        console.log('Extracted Data:');
+        console.log(JSON.stringify(extractResult, null, 2));
+
+        // Set extracted data for next step
+        extractedData = {
+            patientName: extractResult.patientName,
+            dateOfBirth: extractResult.dateOfBirth,
+            referralReason: extractResult.referralReason,
+            insuranceProvider: extractResult.insuranceProvider
+        };
+
+        console.log('\n✅ Extraction complete!\n');
+    } catch (error) {
+        console.error('❌ Extraction failed:', error.message);
+        return;
+    }
 
     // ═══════════════════════════════════════════════════════════════
     // STEP 3: ORCHESTRATE (Find Doctor)
