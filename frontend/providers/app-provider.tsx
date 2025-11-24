@@ -17,9 +17,9 @@ const queryClient = new QueryClient({
       refetchOnReconnect: false,
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes - cache cleanup time
-      retry: 1,
-    },
-  },
+      retry: 1
+    }
+  }
 })
 
 export const AppContext = React.createContext<AppContextType | null>(null)

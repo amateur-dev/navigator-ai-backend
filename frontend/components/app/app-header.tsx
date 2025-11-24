@@ -1,8 +1,8 @@
+import { Home, List, Settings } from 'lucide-react'
+import Link from 'next/link'
 import { ReferralCreateNew } from '@/app/(app)/app/referrals/referral-create-new'
 import { AppUser } from '@/components/app'
 import { Button, Logo } from '@/components/ui'
-import { Home, Inbox, List, Settings, Users } from 'lucide-react'
-import Link from 'next/link'
 
 export const AppHeader = () => {
   return (

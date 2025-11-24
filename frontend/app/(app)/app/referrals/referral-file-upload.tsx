@@ -1,83 +1,212 @@
-"use client";
+'use client'
 
-import { Badge, Button } from "@/components/ui";
-import { format } from "date-fns";
-import { X } from "lucide-react";
-import { useDropzone } from "react-dropzone";
+import { Button, Skeleton } from '@/components/ui'
+import { uploadReferralFile } from '@/lib/actions/referrals'
+import { cn } from '@/utils/cn'
+import { CheckCircle2, FileText, Loader2, X, XCircle } from 'lucide-react'
+import React from 'react'
+import { useDropzone } from 'react-dropzone'
+import { toast } from 'sonner'
+
+interface UploadedFile {
+  file: File
+  id: string
+  uploadStatus: 'pending' | 'uploading' | 'success' | 'error'
+  uploadError?: string
+  uploadResponse?: {
+    success: boolean
+    message?: string
+    [key: string]: unknown
+  }
+}
 
 export const ReferralFileUpload = () => {
-  const { acceptedFiles, getRootProps, getInputProps } = useDropzone();
+  const [uploadedFile, setUploadedFile] = React.useState<UploadedFile | null>(null)
+  const [isPending, startTransition] = React.useTransition()
+
+  const uploadFile = React.useCallback(async (fileToUpload: UploadedFile) => {
+    setUploadedFile({
+      ...fileToUpload,
+      uploadStatus: 'uploading'
+    })
+
+    try {
+      const formData = new FormData()
+      formData.append('file', fileToUpload.file)
+
+      const result = await uploadReferralFile(formData)
+
+      if (!result.success) {
+        throw new Error(result.message || 'Upload failed')
+      }
+
+      setUploadedFile({
+        ...fileToUpload,
+        uploadStatus: 'success',
+        uploadResponse: result
+      })
+
+      toast.success(`${fileToUpload.file.name} uploaded successfully`)
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed'
+
+      setUploadedFile({
+        ...fileToUpload,
+        uploadStatus: 'error',
+        uploadError: errorMessage
+      })
+
+      toast.error(`Failed to upload ${fileToUpload.file.name}: ${errorMessage}`)
+    }
+  }, [])
+
+  const onDrop = React.useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length === 0) return
+
+      const file = acceptedFiles[0]
+      const newFile: UploadedFile = {
+        file,
+        id: `${file.name}-${Date.now()}-${Math.random()}`,
+        uploadStatus: 'uploading'
+      }
+
+      setUploadedFile(newFile)
+      uploadFile(newFile)
+    },
+    [uploadFile]
+  )
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      'application/pdf': ['.pdf']
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: false
+  })
+
+  const removeFile = () => {
+    startTransition(() => {
+      setUploadedFile(null)
+    })
+  }
+
+  const retryUpload = () => {
+    if (!uploadedFile) return
+
+    setUploadedFile({
+      ...uploadedFile,
+      uploadStatus: 'uploading'
+    })
+
+    uploadFile(uploadedFile)
+  }
+
+  const isUploading = uploadedFile?.uploadStatus === 'uploading'
+  const isSuccess = uploadedFile?.uploadStatus === 'success'
+  const showDropzone = !uploadedFile || uploadedFile.uploadStatus === 'error'
 
   return (
     <div className="flex px-4 py-2 flex-1 flex-col gap-4">
-      <div
-        {...getRootProps({
-          className:
-            "dropzone flex justify-center rounded-lg border border-dashed border-gray-900/25 px-6 py-10 w-full bg-background items-center transition-all hover:bg-secondary/5 flex-1",
-        })}
-      >
-        <input {...getInputProps()} />
-        <div className="text-center">
-          <svg
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            data-slot="icon"
-            aria-hidden="true"
-            className="mx-auto size-16 text-accent"
-          >
-            <path
-              d="M1.5 6a2.25 2.25 0 0 1 2.25-2.25h16.5A2.25 2.25 0 0 1 22.5 6v12a2.25 2.25 0 0 1-2.25 2.25H3.75A2.25 2.25 0 0 1 1.5 18V6ZM3 16.06V18c0 .414.336.75.75.75h16.5A.75.75 0 0 0 21 18v-1.94l-2.69-2.689a1.5 1.5 0 0 0-2.12 0l-.88.879.97.97a.75.75 0 1 1-1.06 1.06l-5.16-5.159a1.5 1.5 0 0 0-2.12 0L3 16.061Zm10.125-7.81a1.125 1.125 0 1 1 2.25 0 1.125 1.125 0 0 1-2.25 0Z"
-              clipRule="evenodd"
-              fillRule="evenodd"
-            />
-          </svg>
-          <div className="mt-4 flex text-sm/6 text-gray-600">
-            <span className="relative cursor-pointer bg-transparent font-medium text-default focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-default hover:text-default/90 text-base">
-              <span>Upload a file</span>
-              <input
-                id="file-upload"
-                type="file"
-                name="file-upload"
-                className="sr-only"
-              />
-            </span>
-            <p className="pl-1 text-base text-default">or drag and drop</p>
-          </div>
-          <p className="text-sm text-muted-foreground">PDF up to 10MB</p>
-        </div>
-      </div>
-
-      {acceptedFiles.length > 0 && (
-        <div className="grid w-full gap-1">
-          {acceptedFiles.map((file) => {
-            const fileSizeInMB = file.size / 1024 / 1024;
-
-            return (
-              <div
-                key={file.path}
-                className="flex items-center justify-between gap-2 border rounded-xl corner-smooth bg-background pl-4 pr-2 py-3"
-              >
-                <div className="flex flex-col">
-                  <div className="flex flex-center gap-1">
-                    <span className="text-sm font-medium">{file.name}</span>
-                    <Badge variant="secondary" className="text-xs font-medium">
-                      {fileSizeInMB.toFixed(2)} MB
-                    </Badge>
-                  </div>
-                  <span className="text-xs font-medium text-muted-foreground">
-                    Last Modified on{" "}
-                    {format(new Date(file.lastModified), "MM/dd/yyyy")}
-                  </span>
-                </div>
-                <Button variant="ghost" size="sm" className="h-9 px-2 gap-1.5">
-                  <span>Remove</span>
-                  <X className="size-3" strokeWidth={2} />
-                </Button>
-              </div>
-            );
+      {showDropzone && (
+        <div
+          {...getRootProps({
+            className: cn(
+              'dropzone flex justify-center rounded-lg border px-6 py-10 w-full bg-background items-center transition-all flex-1',
+              {
+                'border-primary bg-primary/5': isDragActive,
+                'border-border': !isDragActive
+              }
+            )
           })}
+        >
+          <input {...getInputProps()} />
+          <div className="text-center flex flex-col items-center gap-2">
+            <FileText className="size-16 text-accent" strokeWidth={1} />
+            <div className="mt-4 flex text-sm/6 text-gray-600">
+              <span className="relative cursor-pointer bg-transparent font-medium text-default focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-default hover:text-default/90 text-base">
+                <span>Select a referral document</span>
+                <input id="file-upload" type="file" name="file-upload" className="sr-only" />
+              </span>
+              <p className="pl-1 text-base text-default">or Drag and drop</p>
+            </div>
+            <p className="text-sm text-muted-foreground">PDF up to 10MB</p>
+          </div>
+        </div>
+      )}
+
+      {isUploading && (
+        <div className="flex flex-col items-center justify-center gap-4 py-10 flex-1">
+          <Loader2 className="size-12 animate-spin text-default" strokeWidth={1} />
+          <div className="text-center">
+            <p className="text-base font-medium text-default">
+              Uploading {uploadedFile.file.name}...
+            </p>
+            <p className="text-sm text-muted-foreground">Please wait while we process your file</p>
+          </div>
+        </div>
+      )}
+
+      {isSuccess && (
+        <div className="flex flex-col gap-3 pb-6">
+          <div className="flex items-center gap-3 border rounded-xl corner-smooth bg-background p-4">
+            <CheckCircle2 className="size-5 text-green-500 flex-shrink-0" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-default">{uploadedFile.file.name}</p>
+              <p className="text-xs text-muted-foreground">Upload successful</p>
+            </div>
+            <Button variant="ghost" size="sm" className="h-9 px-2 gap-1.5" onClick={removeFile}>
+              <span>Remove</span>
+              <X className="size-3" strokeWidth={2} />
+            </Button>
+          </div>
+
+          <div className="flex flex-col gap-4 border rounded-xl corner-smooth bg-background p-4">
+            <div className="flex items-center gap-3">
+              <Loader2 className="size-5 animate-spin text-default flex-shrink-0" />
+              <p className="text-sm font-medium text-default">Processing the document</p>
+            </div>
+            <div className="space-y-1.5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-3/4" />
+              <Skeleton className="h-3 w-5/6" />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadedFile && uploadedFile.uploadStatus === 'error' && (
+        <div className="border rounded-xl corner-smooth bg-background p-4">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <XCircle className="size-5 text-red-500 flex-shrink-0" />
+            <div className="flex flex-col flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{uploadedFile.file.name}</p>
+              <p className="text-xs font-medium text-red-500">{uploadedFile.uploadError}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 px-3"
+              onClick={retryUpload}
+              disabled={isPending}
+            >
+              Retry Upload
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 px-3"
+              onClick={removeFile}
+              disabled={isPending}
+            >
+              Remove
+            </Button>
+          </div>
         </div>
       )}
     </div>
-  );
-};
+  )
+}

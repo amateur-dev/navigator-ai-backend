@@ -1,14 +1,12 @@
 'use client'
 
-import { Plus, Upload } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { useQueryState } from 'nuqs'
 import {
   Button,
   Drawer,
-  DrawerClose,
   DrawerContent,
   DrawerDescription,
-  DrawerFooter,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger
@@ -35,17 +33,6 @@ export const ReferralCreateNew = () => {
           <DrawerDescription>Upload patient's referral document to get started</DrawerDescription>
         </DrawerHeader>
         <ReferralFileUpload />
-        <DrawerFooter className="grid grid-cols-2 gap-2">
-          <DrawerClose asChild>
-            <Button variant="outline" className="h-13" onClick={() => setAction(null)}>
-              Cancel
-            </Button>
-          </DrawerClose>
-          <Button className="h-13">
-            <Upload className="size-5 mr-1" strokeWidth={1.8} />
-            <span>Process Referral</span>
-          </Button>
-        </DrawerFooter>
       </DrawerContent>
     </Drawer>
   )
