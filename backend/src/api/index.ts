@@ -474,25 +474,114 @@ app.get('/referral/:id/logs', (c) => {
 });
 
 // Patient Confirmation endpoint
+// Confirmation endpoint - Demo mode (shows what would be sent)
 app.post('/confirm', async (c) => {
   try {
     const body = await c.req.json();
-    const { patientName, slot } = body;
+    const {
+      referralId,
+      patientName,
+      patientEmail,
+      patientPhone,
+      doctorName,
+      specialty,
+      appointmentDate,
+      appointmentTime,
+      facilityName,
+      facilityAddress
+    } = body;
 
-    if (!patientName || !slot) {
-      return c.text('Missing required fields', 400);
+    if (!patientName || !doctorName) {
+      return c.json({
+        success: false,
+        error: 'Missing required fields: patientName and doctorName'
+      }, 400);
     }
 
-    // Mock SMS/Email dispatch
-    console.log(`Sending confirmation to ${patientName} for slot ${slot}`);
+    // Format appointment datetime
+    const apptDate = appointmentDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 2 days from now
+    const apptTime = appointmentTime || '10:00 AM';
+    const facility = facilityName || 'Downtown Medical Center';
+    const address = facilityAddress || '123 Main Street, Suite 200, New York, NY 10001';
+    const phone = patientPhone || '+1-555-0123';
+    const email = patientEmail || 'patient@email.com';
 
+    // Generate realistic SMS message
+    const smsMessage = `Hi ${patientName}! Your ${specialty || 'medical'} appointment with ${doctorName} is confirmed for ${apptDate} at ${apptTime} at ${facility}. Location: ${address}. Questions? Call (555) 123-4567. Reply CANCEL to reschedule.`;
+
+    // Generate realistic email
+    const emailSubject = `Appointment Confirmed - ${doctorName}`;
+    const emailBody = `Dear ${patientName},
+
+Your appointment has been successfully confirmed!
+
+APPOINTMENT DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Doctor:        ${doctorName}
+Specialty:     ${specialty || 'General Practice'}
+Date & Time:   ${apptDate} at ${apptTime}
+Location:      ${facility}
+Address:       ${address}
+
+IMPORTANT REMINDERS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Please arrive 15 minutes early for check-in
+• Bring your insurance card and photo ID
+• Bring a list of current medications
+• If you need to cancel or reschedule, please call us at least 24 hours in advance
+
+CONTACT INFORMATION:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Phone: (555) 123-4567
+Email: appointments@hospital.com
+Portal: https://patient-portal.hospital.com
+
+We look forward to seeing you!
+
+Best regards,
+${facility} Team
+
+---
+Referral ID: ${referralId || 'N/A'}
+This is an automated confirmation. Please do not reply to this email.`;
+
+    // Return demo response
     return c.json({
-      message: 'Confirmation sent successfully',
-      status: 'Sent',
+      success: true,
+      confirmationSent: true,
+      referralId: referralId || 'demo-' + Date.now(),
+      notifications: {
+        sms: {
+          to: phone,
+          message: smsMessage,
+          length: smsMessage.length,
+          estimatedCost: '$0.0075'
+        },
+        email: {
+          to: email,
+          subject: emailSubject,
+          body: emailBody,
+          format: 'text/plain'
+        }
+      },
+      appointmentDetails: {
+        patient: patientName,
+        doctor: doctorName,
+        specialty: specialty || 'General Practice',
+        dateTime: `${apptDate} at ${apptTime}`,
+        location: facility,
+        address: address
+      },
+      method: 'DEMO_MODE',
+      message: 'In production, SMS and Email would be sent via Twilio/SendGrid',
+      timestamp: new Date().toISOString()
     });
   } catch (error) {
     console.error('Confirm error:', error);
-    return c.text('Confirmation failed', 500);
+    return c.json({
+      success: false,
+      error: 'Confirmation failed: ' + (error instanceof Error ? error.message : String(error))
+    }, 500);
   }
 });
 

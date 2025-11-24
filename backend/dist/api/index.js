@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "62825caf8c647a2fe2d1c50447bdeab7602c6975"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "a63a33c4f0e9eb7d2e775fe59fd32bd8835525d3"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -2381,18 +2381,101 @@ app.get("/referral/:id/logs", (c) => {
 app.post("/confirm", async (c) => {
   try {
     const body = await c.req.json();
-    const { patientName, slot } = body;
-    if (!patientName || !slot) {
-      return c.text("Missing required fields", 400);
+    const {
+      referralId,
+      patientName,
+      patientEmail,
+      patientPhone,
+      doctorName,
+      specialty,
+      appointmentDate,
+      appointmentTime,
+      facilityName,
+      facilityAddress
+    } = body;
+    if (!patientName || !doctorName) {
+      return c.json({
+        success: false,
+        error: "Missing required fields: patientName and doctorName"
+      }, 400);
     }
-    console.log(`Sending confirmation to ${patientName} for slot ${slot}`);
+    const apptDate = appointmentDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
+    const apptTime = appointmentTime || "10:00 AM";
+    const facility = facilityName || "Downtown Medical Center";
+    const address = facilityAddress || "123 Main Street, Suite 200, New York, NY 10001";
+    const phone = patientPhone || "+1-555-0123";
+    const email = patientEmail || "patient@email.com";
+    const smsMessage = `Hi ${patientName}! Your ${specialty || "medical"} appointment with ${doctorName} is confirmed for ${apptDate} at ${apptTime} at ${facility}. Location: ${address}. Questions? Call (555) 123-4567. Reply CANCEL to reschedule.`;
+    const emailSubject = `Appointment Confirmed - ${doctorName}`;
+    const emailBody = `Dear ${patientName},
+
+Your appointment has been successfully confirmed!
+
+APPOINTMENT DETAILS:
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+Doctor:        ${doctorName}
+Specialty:     ${specialty || "General Practice"}
+Date & Time:   ${apptDate} at ${apptTime}
+Location:      ${facility}
+Address:       ${address}
+
+IMPORTANT REMINDERS:
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+\u2022 Please arrive 15 minutes early for check-in
+\u2022 Bring your insurance card and photo ID
+\u2022 Bring a list of current medications
+\u2022 If you need to cancel or reschedule, please call us at least 24 hours in advance
+
+CONTACT INFORMATION:
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+Phone: (555) 123-4567
+Email: appointments@hospital.com
+Portal: https://patient-portal.hospital.com
+
+We look forward to seeing you!
+
+Best regards,
+${facility} Team
+
+---
+Referral ID: ${referralId || "N/A"}
+This is an automated confirmation. Please do not reply to this email.`;
     return c.json({
-      message: "Confirmation sent successfully",
-      status: "Sent"
+      success: true,
+      confirmationSent: true,
+      referralId: referralId || "demo-" + Date.now(),
+      notifications: {
+        sms: {
+          to: phone,
+          message: smsMessage,
+          length: smsMessage.length,
+          estimatedCost: "$0.0075"
+        },
+        email: {
+          to: email,
+          subject: emailSubject,
+          body: emailBody,
+          format: "text/plain"
+        }
+      },
+      appointmentDetails: {
+        patient: patientName,
+        doctor: doctorName,
+        specialty: specialty || "General Practice",
+        dateTime: `${apptDate} at ${apptTime}`,
+        location: facility,
+        address
+      },
+      method: "DEMO_MODE",
+      message: "In production, SMS and Email would be sent via Twilio/SendGrid",
+      timestamp: (/* @__PURE__ */ new Date()).toISOString()
     });
   } catch (error) {
     console.error("Confirm error:", error);
-    return c.text("Confirmation failed", 500);
+    return c.json({
+      success: false,
+      error: "Confirmation failed: " + (error instanceof Error ? error.message : String(error))
+    }, 500);
   }
 });
 app.get("/api/hello", (c) => {
