@@ -1,6 +1,7 @@
 application "navigator-ai-backend" {
   
   service "api" {
+    visibility = "public"
   }
 
   smartbucket "referral-docs" {}

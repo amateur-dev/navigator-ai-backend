@@ -13,9 +13,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@liquidmetal-ai/lm-raindrop": "^0.6.43",
-    "@liquidmetal-ai/raindrop-framework": "^0.10.0",
-    "@types/multer": "^2.0.0",
+    "@liquidmetal-ai/lm-raindrop": "^0.1.2",
+    "@liquidmetal-ai/raindrop-framework": "^0.11.0",
     "express": "^5.1.0",
     "hono": "^4.10.6",
     "multer": "^2.0.2",
@@ -24,6 +23,7 @@
   "devDependencies": {
     "@types/express": "^5.0.5",
     "@types/jest": "^30.0.0",
+    "@types/multer": "^2.0.0",
     "@types/node": "^24.10.1",
     "@types/supertest": "^6.0.3",
     "jest": "^30.2.0",
