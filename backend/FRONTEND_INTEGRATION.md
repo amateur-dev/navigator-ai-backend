@@ -1,5 +1,9 @@
 # Frontend Integration Guide - Complete Flow
 
+> **🚀 New to the project?** Start with the [Local Setup Guide](LOCAL_SETUP.md) to get everything running first!
+
+---
+
 ## 🏗️ System Architecture Overview
 
 ```
@@ -68,6 +72,315 @@ User Uploads PDF
        ↓
 Display Confirmation to User
 ```
+
+---
+
+## 🤔 Understanding What Happens During Extraction
+
+### Where Does Each Step Happen?
+
+```
+┌─────────────────────────────────────────────────────┐
+│  FRONTEND (Browser - User's Computer)              │
+│                                                     │
+│  1. User selects PDF file                          │
+│  2. Frontend creates FormData                      │
+│  3. Sends PDF to extraction service                │
+│     ↓                                               │
+│  [FRONTEND DOES NOTHING TO THE PDF]                │
+│     ↓                                               │
+│  4. Receives structured JSON back                  │
+│  5. Displays patient data to user                  │
+└─────────────────────────────────────────────────────┘
+                      ↓ PDF file
+                      ↓
+┌─────────────────────────────────────────────────────┐
+│  EXTRACTION SERVICE (Backend)                       │
+│  Port 3001 (Local) or Vultr Server (Deployed)      │
+│                                                     │
+│  [THIS IS WHERE ALL THE WORK HAPPENS]              │
+│                                                     │
+│  Step 1: Receives PDF file                         │
+│     ↓                                               │
+│  Step 2: pdf-parse library extracts TEXT           │
+│          PDF bytes → Raw text string               │
+│          "PATIENT INFORMATION                      │
+│           Name: Aisha Patel                        │
+│           DOB: July 22, 1985..."                   │
+│     ↓                                               │
+│  Step 3: Sends text to CEREBRAS AI Cloud           │
+│     ↓                                               │
+│  Step 4: CEREBRAS returns structured JSON          │
+│          { "patientName": "Aisha Patel",           │
+│            "dateOfBirth": "1985-07-22", ... }      │
+│     ↓                                               │
+│  Step 5: Returns JSON to frontend                  │
+└─────────────────────────────────────────────────────┘
+                      ↓ Text
+                      ↓
+┌─────────────────────────────────────────────────────┐
+│  CEREBRAS CLOUD (AI Processing)                    │
+│                                                     │
+│  - Receives raw text from extraction service       │
+│  - Uses llama3.1-8b model                          │
+│  - Understands medical terminology                 │
+│  - Structures data intelligently                   │
+│  - Returns JSON                                    │
+└─────────────────────────────────────────────────────┘
+```
+
+### What Frontend Does (Simple):
+
+```javascript
+// ONLY sends PDF, receives JSON
+const formData = new FormData();
+formData.append('file', pdfFile);
+
+const response = await fetch('http://localhost:3001/extract', {
+  method: 'POST',
+  body: formData
+});
+
+const result = await response.json();
+console.log(result.data); // Already structured!
+```
+
+**Frontend does NOT:**
+- ❌ Parse PDF
+- ❌ Extract text
+- ❌ Call CEREBRAS
+- ❌ Structure data
+
+All of this happens in the extraction service!
+
+---
+
+## 💪 The Power of CEREBRAS AI - Why We Use It
+
+### ❌ Without AI (Just pdf-parse):
+
+pdf-parse gives you **raw, unstructured text**:
+
+```
+CEDARS-SINAI MEDICAL CENTER
+8700 Beverly Boulevard, Los Angeles, CA 90048
+Tel: (310) 423-3277 | Fax: (310) 423-0811
+
+
+ORTHOPEDIC SURGERY REFERRAL
+
+Date: November 18, 2025
+Referral ID: CS-2025-12394
+
+REFERRING PHYSICIAN
+
+Dr. James Rodriguez, MD
+Family Medicine
+Cedars-Sinai Primary Care - Beverly Hills
+Phone: (310) 423-9800
+
+PATIENT INFORMATION
+
+Name: Aisha Patel
+DOB: July 22, 1985 (Age: 40)
+Gender: Female
+Insurance: United Healthcare HMO
+Policy #: UHC-CA-4428387
+Address: 9204 Wilshire Blvd, Apt 3B, Beverly Hills, CA 90212
+
+REFERRAL TO
+
+Specialty: Orthopedic Surgery (Sports Medicine)
+Reason: Chronic right knee pain, suspected meniscal tear
+Urgency: Semi-urgent (within 1 week)
+```
+
+**Problem:** This is a mess! How do you extract structured fields?
+
+### 🤖 Traditional Approach (Regex/Rules):
+
+You'd need hundreds of lines of fragile code:
+
+```javascript
+// Manually parse with regex (VERY FRAGILE)
+const nameRegex = /Name:\s*([A-Za-z\s]+)/;
+const dobRegex = /(January|February|March|April|May|...) \d{1,2}, \d{4}/;
+const insuranceRegex = /Insurance:\s*([A-Z\s]+)/;
+
+function extractPatient(text) {
+  // Handle "Name:"
+  // Handle "Patient:"
+  // Handle "Patient Name:"
+  // Handle "Full Name:"
+  // What if there's no label?!
+  
+  // Convert "July 22, 1985"
+  // Convert "07/22/1985"
+  // Convert "1985-07-22"
+  // Convert "22 Jul 1985"
+  // ...20+ different formats!
+  
+  // Find referring vs patient vs doctor names
+  // Which "name" is the patient?!
+}
+```
+
+**This breaks easily when:**
+- Format changes slightly
+- Different hospital uses different labels
+- Dates in different formats
+- Fields in different order
+
+---
+
+### ✨ With CEREBRAS AI (Intelligent):
+
+```javascript
+// Just ask intelligently
+const prompt = `Extract patient info from: ${text}`;
+
+// CEREBRAS understands:
+// - Context (which name is patient vs doctor)
+// - Medical terminology
+// - Date format variations
+// - Unstructured data
+```
+
+### What CEREBRAS AI Does for You:
+
+#### 1. **Understands Context**
+
+```
+Text: "Dr. James Rodriguez, MD ... Name: Aisha Patel"
+
+CEREBRAS knows:
+✅ "Aisha Patel" = PATIENT (not doctor)
+❌ "Dr. James Rodriguez" = REFERRING PHYSICIAN (not patient)
+```
+
+Normal code would grab the first name it sees (wrong!).
+
+#### 2. **Intelligent Date Conversion**
+
+```
+Input variations:
+- "DOB: July 22, 1985 (Age: 40)"
+- "Date of Birth: 07/22/1985"
+- "Born: 22 Jul 1985"
+- "1985-07-22"
+
+CEREBRAS output (all cases):
+→ "1985-07-22"
+```
+
+#### 3. **Medical Understanding**
+
+```
+Text: "Chronic right knee pain, suspected meniscal tear"
+
+CEREBRAS understands:
+✅ This is a medical condition (referral reason)
+✅ "Chronic" + "knee" = orthopedic specialty
+✅ Structures it properly
+
+Not just random text!
+```
+
+#### 4. **Handles Variations**
+
+```
+Document A: "Name: Aisha Patel"
+Document B: "Patient: John Doe"  
+Document C: "John Smith (patient information)"
+Document D: "The patient, Sarah Johnson, is experiencing..."
+
+CEREBRAS extracts patient name from ALL formats!
+```
+
+Regex would need 50+ patterns and still miss cases.
+
+#### 5. **Normalizes Data**
+
+```
+Text: "Insurance: United Healthcare HMO"
+CEREBRAS: "United Healthcare HMO"
+
+Text: "Ins: UHC"
+CEREBRAS: "UHC" (or expands to full name if context available)
+
+Text: "Payer: Blue Cross Blue Shield PPO"
+CEREBRAS: "Blue Cross Blue Shield PPO"
+```
+
+#### 6. **Finds Unlabeled Fields**
+
+```
+Sometimes PDFs don't have labels:
+
+"Patient is Aisha Patel experiencing chronic knee pain, 
+insurance through United Healthcare..."
+
+CEREBRAS still finds:
+- Patient name: "Aisha Patel"
+- Condition: "chronic knee pain"  
+- Insurance: "United Healthcare"
+```
+
+---
+
+### 📊 Real Example from Your System
+
+**Input (pdf-parse output):**
+```
+PATIENT INFORMATION
+Name: Aisha Patel
+DOB: July 22, 1985 (Age: 40)
+Gender: Female
+MRN: CS-992841
+Insurance: United Healthcare HMO
+Policy #: UHC-CA-4428387
+
+REFERRAL TO
+Specialty: Orthopedic Surgery (Sports Medicine)
+Reason: Chronic right knee pain, suspected meniscal tear
+```
+
+**CEREBRAS Output:**
+```json
+{
+  "patientName": "Aisha Patel",
+  "dateOfBirth": "1985-07-22",
+  "referralReason": "Chronic right knee pain, suspected meniscal tear",
+  "insuranceProvider": "United Healthcare HMO"
+}
+```
+
+**What CEREBRAS Did:**
+1. ✅ Found patient name (not doctor, not facility)
+2. ✅ Converted "July 22, 1985" → "1985-07-22"
+3. ✅ Ignored noise like "(Age: 40)" and "MRN:"
+4. ✅ Extracted exact referral reason
+5. ✅ Got full insurance name (not policy number)
+
+---
+
+### 🆚 Comparison
+
+| Approach | Lines of Code | Handles Variations? | Breaks Easily? |
+|----------|---------------|---------------------|----------------|
+| **Regex/Rules** | 500+ | ❌ No | ✅ Yes |
+| **CEREBRAS AI** | 20 | ✅ Yes | ❌ No |
+
+### Why CEREBRAS is Powerful:
+
+- **Natural Language Understanding** - Reads like a human
+- **Context Awareness** - Knows which data is which
+- **Medical Knowledge** - Understands terminology
+- **Format Agnostic** - Works with any PDF layout
+- **Self-Learning** - Adapts to variations
+- **Fast** - 2-4 second response time
+
+**This is why we use AI!** It's not just formatting - it's intelligent understanding.
 
 ---
 
