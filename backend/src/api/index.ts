@@ -79,7 +79,7 @@ app.post('/upload', async (c) => {
 });
 
 // AI Extraction endpoint
-// PDF Extraction endpoint using CEREBRAS AI
+// PDF Extraction endpoint using SmartBucket AI with retry logic
 app.post('/extract', async (c) => {
   try {
     const body = await c.req.json();
@@ -89,7 +89,7 @@ app.post('/extract', async (c) => {
       return c.json({ error: 'Document ID is required' }, 400);
     }
 
-    // Get the PDF from SmartBucket using document ID
+    // Get the PDF from SmartBucket
     const smartbucket = c.env.REFERRAL_DOCS;
     const pdfObject = await smartbucket.get(id);
 
@@ -97,58 +97,98 @@ app.post('/extract', async (c) => {
       return c.json({ error: 'Document not found' }, 404);
     }
 
-    // Initialize CEREBRAS client for intelligent extraction
-    const Cerebras = (await import('@cerebras/cerebras_cloud_sdk')).default;
-    const cerebras = new Cerebras({
-      apiKey: process.env.CEREBRAS_API_KEY || 'csk-k2xkk65hrwn46ypvhepyf49mhjx4f2hc3k6ywxcrhkt6ttvt',
-      warmTCPConnection: false
-    });
+    // Use SmartBucket's documentChat for AI extraction  
+    const extractionPrompt = `Extract patient information from this medical referral document.
 
-    // Get original filename from metadata if available
-    const originalFilename = pdfObject.customMetadata?.originalName || 'medical referral document';
-
-    // Smart context-aware extraction
-    const prompt = `You are analyzing a medical referral document titled "${originalFilename}".
-
-Based on typical medical referral documents, extract realistic patient information in this exact JSON format:
-
+Return ONLY a JSON object with these exact fields:
 {
-  "patientName": "Full patient name",
-  "dateOfBirth": "YYYY-MM-DD format",
+  "patientName": "Full patient name (first and last)",
+  "dateOfBirth": "YYYY-MM-DD format", 
   "referralReason": "Medical condition or symptoms",
   "insuranceProvider": "Insurance company name"
 }
 
-For Document 3, the patient is Lisa Kowalski (female, age 33, DOB: September 5, 1992) with newly diagnosed Type 2 Diabetes Mellitus requiring Endocrinology referral. Insurance: Aetna PPO.
+Instructions:
+- Read the document carefully
+- Extract EXACTLY what the document says
+- Convert dates to YYYY-MM-DD format
+- If a field is missing, use "Unknown"
+- Return ONLY valid JSON, no markdown or explanation`;
 
-Generate realistic, medically accurate extraction data for this document. Return ONLY the JSON object.`;
+    const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
-    const completion = await cerebras.chat.completions.create({
-      messages: [{ role: 'user', content: prompt }],
-      model: 'llama3.1-8b',
-      temperature: 0.1,
-      max_completion_tokens: 300
-    });
+    // Retry logic for documentChat (may need time to index)
+    let attempts = 0;
+    const maxAttempts = 3;
+    let aiResponse;
 
-    const aiResponse = completion.choices[0]?.message?.content || '';
-    console.log('CEREBRAS Response:', aiResponse);
+    while (attempts < maxAttempts) {
+      try {
+        aiResponse = await smartbucket.documentChat({
+          objectId: id,
+          input: extractionPrompt,
+          requestId: `${requestId}-attempt-${attempts}`
+        });
 
-    // Parse JSON from AI response
+        // Check if we got a valid response
+        if (aiResponse && aiResponse.answer) {
+          const answerText = typeof aiResponse.answer === 'string' ? aiResponse.answer : JSON.stringify(aiResponse.answer);
+          if (answerText.trim()) {
+            console.log('SmartBucket AI Response:', answerText);
+            aiResponse.answer = answerText; // Normalize to string
+            break;
+          }
+        }
+
+        // Empty response, wait and retry
+        attempts++;
+        if (attempts < maxAttempts) {
+          console.log(`Empty response, retrying (${attempts}/${maxAttempts})...`);
+          await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+        }
+      } catch (chatError) {
+        console.error(`documentChat attempt ${attempts + 1} failed:`, chatError);
+        attempts++;
+        if (attempts < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        } else {
+          throw chatError;
+        }
+      }
+    }
+
+    if (!aiResponse || !aiResponse.answer) {
+      return c.json({
+        error: 'AI extraction returned empty response after retries. Document may still be indexing.',
+        suggestion: 'Try again in 10-15 seconds'
+      }, 503);
+    }
+
+    // Ensure answer is a string
+    const answerText = typeof aiResponse.answer === 'string' ? aiResponse.answer : JSON.stringify(aiResponse.answer);
+
+    // Parse the AI response
     let extractedData;
     try {
-      const cleanJson = aiResponse.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
+      // Clean up potential markdown
+      const cleanJson = answerText.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
       const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         extractedData = JSON.parse(jsonMatch[0]);
       } else {
-        throw new Error('No JSON in response');
+        throw new Error('No JSON found in AI response');
       }
     } catch (parseError) {
-      console.error('Parse error:', aiResponse);
-      return c.json({ error: 'Failed to parse AI response', rawResponse: aiResponse }, 500);
+      console.error('Failed to parse AI response:', answerText);
+      return c.json({
+        error: 'Failed to parse AI response',
+        rawResponse: answerText
+      }, 500);
     }
 
+    console.log('Extracted Data:', extractedData);
     return c.json(extractedData);
+
   } catch (error) {
     console.error('Extract error:', error);
     return c.json({

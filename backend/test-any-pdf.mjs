@@ -145,11 +145,11 @@ async function testPDF(pdfPath) {
     // ═══════════════════════════════════════════════════════════
     // STEP 2: Extract Patient Data
     // ═══════════════════════════════════════════════════════════
-    section('STEP 2: Extract Patient Data (CEREBRAS AI)');
+    section('STEP 2: Extract Patient Data (SmartBucket AI)');
 
-    // Small delay to ensure processing
-    log('⏳ Waiting 2 seconds for processing...', 'yellow');
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // SmartBucket needs time to index the PDF before documentChat can read it
+    log('⏳ Waiting 15 seconds for SmartBucket to index PDF...', 'yellow');
+    await new Promise(resolve => setTimeout(resolve, 15000));
 
     try {
         log('🤖 Calling CEREBRAS AI extraction...', 'yellow');
