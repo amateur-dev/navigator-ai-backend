@@ -39,12 +39,30 @@
 
 ## 📍 Service Locations
 
-### Local Development (Current Setup)
+### Development & Production URLs
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| **Extraction Service** | `http://localhost:3001` | PDF → AI Extraction |
-| **Raindrop Backend** | `https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run` | Orchestration, DB, Storage |
+| Service | Local (Testing) | Vultr (Deployed) | Purpose |
+|---------|----------------|------------------|---------|
+| **Extraction Service** | `http://localhost:3001` | `http://139.180.220.93:3001` | PDF → AI Extraction |
+| **Raindrop Backend** | `https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run` | Same (already deployed) | Orchestration, DB, Storage |
+
+### Which URL to Use?
+
+**For Local Development:**
+```javascript
+const EXTRACT_URL = 'http://localhost:3001/extract';
+```
+- Use when running extraction service locally (see [Local Setup Guide](LOCAL_SETUP.md))
+- Good for development and testing
+- No internet dependency for extraction
+
+**For Production / Team Testing:**
+```javascript
+const EXTRACT_URL = 'http://139.180.220.93:3001/extract';
+```
+- Use when testing with deployed Vultr service
+- Everyone on team can access
+- Same behavior as local, just different URL
 
 ---
 
@@ -386,17 +404,36 @@ Reason: Chronic right knee pain, suspected meniscal tear
 
 ## 📡 API Endpoints - Complete Reference
 
-### **① PDF EXTRACTION** (Local Service)
+### **① PDF EXTRACTION** (Extraction Service)
 
-**Endpoint:** `POST http://localhost:3001/extract`
+**Endpoint:** `POST /extract`
 
-**Location:** Local extraction service (port 3001)
+**URLs:**
+- **Local:** `http://localhost:3001/extract`
+- **Vultr:** `http://139.180.220.93:3001/extract`
+
+**Location:** Extraction service (Local or Vultr server)
 
 **AI Used:** CEREBRAS (llama3.1-8b) for intelligent parsing
 
+**Configuration:**
+```javascript
+// At the top of your code, set the environment
+const API_CONFIG = {
+  // Change this to switch between local and deployed
+  EXTRACT_URL: process.env.NODE_ENV === 'production' 
+    ? 'http://139.180.220.93:3001/extract'  // Vultr
+    : 'http://localhost:3001/extract'        // Local
+};
+
+// Or simply:
+const EXTRACT_URL = 'http://139.180.220.93:3001/extract'; // Deployed
+// const EXTRACT_URL = 'http://localhost:3001/extract';    // Local testing
+```
+
 **Request:**
 ```http
-POST http://localhost:3001/extract
+POST http://139.180.220.93:3001/extract
 Content-Type: multipart/form-data
 
 file: <PDF file>
@@ -407,7 +444,8 @@ file: <PDF file>
 const formData = new FormData();
 formData.append('file', pdfFile); // File from <input type="file">
 
-const response = await fetch('http://localhost:3001/extract', {
+// Use Vultr URL (deployed)
+const response = await fetch('http://139.180.220.93:3001/extract', {
   method: 'POST',
   body: formData
 });
@@ -616,14 +654,20 @@ const confirmation = await confirmResponse.json();
 ## 🎨 Complete Frontend Flow (Code Example)
 
 ```javascript
+// Configuration - Change URL based on environment
+const EXTRACT_URL = 'http://139.180.220.93:3001/extract'; // Vultr (deployed)
+// const EXTRACT_URL = 'http://localhost:3001/extract';    // Local testing
+
+const RAINDROP_URL = 'https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run';
+
 // STEP 1: User uploads PDF
 const handleFileUpload = async (pdfFile) => {
   try {
-    // Extract patient data using local service
+    // Extract patient data using extraction service
     const formData = new FormData();
     formData.append('file', pdfFile);
     
-    const extractResponse = await fetch('http://localhost:3001/extract', {
+    const extractResponse = await fetch(EXTRACT_URL, {
       method: 'POST',
       body: formData
     });
@@ -650,7 +694,7 @@ const handleFileUpload = async (pdfFile) => {
 const findDoctor = async (patientData) => {
   try {
     const orchestrateResponse = await fetch(
-      'https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run/orchestrate',
+      `${RAINDROP_URL}/orchestrate`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -681,7 +725,7 @@ const findDoctor = async (patientData) => {
 const confirmAppointment = async (patientData, doctorMatch, selectedSlot) => {
   try {
     const confirmResponse = await fetch(
-      'https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run/confirm',
+      `${RAINDROP_URL}/confirm`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -809,9 +853,50 @@ const data = await response.json();
 
 ---
 
-## ⚙️ Starting Local Services
+## 🔄 Switching Between Local and Deployed
 
-### Before Frontend Development
+### Environment-Based Configuration
+
+```javascript
+// config.js or at top of your main file
+const API_ENDPOINTS = {
+  extract: process.env.REACT_APP_ENV === 'production'
+    ? 'http://139.180.220.93:3001/extract'
+    : 'http://localhost:3001/extract',
+  
+  orchestrate: 'https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run/orchestrate',
+  
+  confirm: 'https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run/confirm'
+};
+
+export default API_ENDPOINTS;
+```
+
+### Simple Toggle
+
+```javascript
+// For quick testing, just uncomment the one you want
+const USE_DEPLOYED = true; // Set to false for local testing
+
+const EXTRACT_URL = USE_DEPLOYED
+  ? 'http://139.180.220.93:3001/extract'   // Vultr
+  : 'http://localhost:3001/extract';        // Local
+```
+
+### When to Use Each
+
+| Use Local | Use Vultr |
+|-----------|-----------|
+| During development | For team testing |
+| Testing new features | Demo to stakeholders |
+| Debugging locally | Testing with remote frontend |
+| No internet needed | Multiple developers accessing |
+
+---
+
+## ⚙️ Starting Services
+
+### For Local Testing
 
 **Terminal 1: Start Extraction Service**
 ```bash
@@ -829,9 +914,19 @@ cd frontend
 npm run dev
 ```
 
-**Raindrop Backend:** Already deployed, always running at:
+### For Deployed Testing
+
+**Nothing to start!** Just use the Vultr URL:
+```javascript
+const EXTRACT_URL = 'http://139.180.220.93:3001/extract';
 ```
-https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run
+
+The Vultr service is **always running** with PM2.
+
+**To check if it's up:**
+```bash
+curl http://139.180.220.93:3001/health
+# Should return: {"status":"healthy","service":"vultr-extraction"}
 ```
 
 ---
@@ -840,12 +935,21 @@ https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run
 
 ### Quick Test Script
 
+**Test Local:**
 ```bash
-# Test extraction
+# Test extraction (local)
 curl -X POST http://localhost:3001/extract \
   -F "file=@path/to/Medical_Referral_Document_2.pdf"
+```
 
-# Test orchestration
+**Test Vultr:**
+```bash
+# Test extraction (deployed)
+curl -X POST http://139.180.220.93:3001/extract \
+  -F "file=@path/to/Medical_Referral_Document_2.pdf"
+```
+
+**Test orchestration (always on Raindrop):**
 curl -X POST https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run/orchestrate \
   -H "Content-Type: application/json" \
   -d '{
