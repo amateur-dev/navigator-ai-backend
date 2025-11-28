@@ -5,6 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest run",
+    "test:e2e": "node test-e2e-full.mjs",
+    "test:e2e:full": "node test-e2e-comprehensive.mjs",
     "build": "tsc",
     "start": "node dist/server.js"
   },
