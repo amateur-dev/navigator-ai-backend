@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "3fcbb716f9bb002ca12cbb714ba130b1b9834278"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "aa0ca8d1700dc91d98794600bccee9215d41f833"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1994,6 +1994,33 @@ var MOCK_REFERRAL_LOGS = {
 };
 
 // src/api/index.ts
+function determineSpecialty(referralReason) {
+  let specialty = "General Practitioner";
+  const reasonLower = referralReason.toLowerCase();
+  const specialtyMap = {
+    "Cardiologist": ["heart", "cardio", "chest", "palpitation", "pulse", "pressure"],
+    "Dermatologist": ["skin", "derma", "rash", "itch", "acne", "mole", "lesion", "nevus"],
+    "Orthopedist": ["bone", "joint", "knee", "back", "spine", "fracture", "ortho", "shoulder", "hip"],
+    "Neurologist": ["headache", "migraine", "seizure", "numbness", "dizzy", "brain", "nerve", "neuro"],
+    "Pediatrician": ["child", "baby", "infant", "toddler", "pediatric", "growth", "allergy"],
+    "Psychiatrist": ["mental", "depress", "anxiety", "mood", "psych", "behavior"],
+    "Oncologist": ["cancer", "tumor", "lump", "onco", "chemo", "radiation", "mammogram", "breast", "bi-rads"],
+    "Gastroenterologist": ["stomach", "gut", "digest", "bowel", "reflux", "gastro", "liver", "anemia"],
+    "Pulmonologist": ["lung", "breath", "cough", "pulmo", "respiratory", "asthma"],
+    "Urologist": ["urine", "bladder", "kidney", "prostate", "uro"],
+    "Ophthalmologist": ["eye", "vision", "sight", "blind", "optic"],
+    "ENT Specialist": ["ear", "nose", "throat", "sinus", "hearing"],
+    "Endocrinologist": ["diabetes", "thyroid", "hormone", "sugar", "endo"],
+    "Rheumatologist": ["arthritis", "autoimmune", "lupus", "rheum"]
+  };
+  for (const [spec, keywords] of Object.entries(specialtyMap)) {
+    if (keywords.some((k) => reasonLower.includes(k))) {
+      specialty = spec;
+      break;
+    }
+  }
+  return specialty;
+}
 var app = new Hono2();
 app.use("*", logger());
 app.get("/health", (c) => {
@@ -2147,30 +2174,7 @@ app.post("/orchestrate", async (c) => {
         }
       }, 400);
     }
-    let specialty = "General Practitioner";
-    const reasonLower = referralReason.toLowerCase();
-    const specialtyMap = {
-      "Cardiologist": ["heart", "cardio", "chest", "palpitation", "pulse", "pressure"],
-      "Dermatologist": ["skin", "derma", "rash", "itch", "acne", "mole", "lesion"],
-      "Orthopedist": ["bone", "joint", "knee", "back", "spine", "fracture", "ortho", "shoulder", "hip"],
-      "Neurologist": ["headache", "migraine", "seizure", "numbness", "dizzy", "brain", "nerve", "neuro"],
-      "Pediatrician": ["child", "baby", "infant", "toddler", "pediatric", "growth"],
-      "Psychiatrist": ["mental", "depress", "anxiety", "mood", "psych", "behavior"],
-      "Oncologist": ["cancer", "tumor", "lump", "onco", "chemo", "radiation"],
-      "Gastroenterologist": ["stomach", "gut", "digest", "bowel", "reflux", "gastro", "liver"],
-      "Pulmonologist": ["lung", "breath", "asthma", "cough", "pulmo", "respiratory"],
-      "Urologist": ["urine", "bladder", "kidney", "prostate", "uro"],
-      "Ophthalmologist": ["eye", "vision", "sight", "blind", "optic"],
-      "ENT Specialist": ["ear", "nose", "throat", "sinus", "hearing"],
-      "Endocrinologist": ["diabetes", "thyroid", "hormone", "sugar", "endo"],
-      "Rheumatologist": ["arthritis", "autoimmune", "lupus", "rheum"]
-    };
-    for (const [spec, keywords] of Object.entries(specialtyMap)) {
-      if (keywords.some((k) => reasonLower.includes(k))) {
-        specialty = spec;
-        break;
-      }
-    }
+    const specialty = determineSpecialty(referralReason);
     const insuranceStatus = insuranceProvider && insuranceProvider.toLowerCase().includes("blue") ? "Approved" : "Pending Review";
     const db = c.env.REFERRALS_DB;
     const specialistsResult = await db.executeQuery({
@@ -2532,5 +2536,6 @@ var api_default = class extends Service {
 var stdin_default = api_default;
 export {
   cors,
-  stdin_default as default
+  stdin_default as default,
+  determineSpecialty
 };

@@ -6,8 +6,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Configuration
-const VULTR_EXTRACT_URL = 'http://139.180.220.93:3001/extract';
-const RAINDROP_BASE_URL = 'https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run';
+// Allow overriding the endpoints via environment for local development / CI
+const VULTR_EXTRACT_URL = process.env.VULTR_EXTRACT_URL || 'http://139.180.220.93:3001/extract';
+const RAINDROP_BASE_URL = process.env.RAINDROP_BASE_URL || 'https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run';
 
 // Test Cases with Expected Values
 const TEST_CASES = [

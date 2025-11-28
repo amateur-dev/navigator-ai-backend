@@ -13,6 +13,37 @@ import {
   MOCK_REFERRAL_LOGS
 } from './mockData';
 
+// Exported for testing/mocking
+export function determineSpecialty(referralReason: string): string {
+  let specialty = 'General Practitioner';
+  const reasonLower = referralReason.toLowerCase();
+
+  const specialtyMap: Record<string, string[]> = {
+    'Cardiologist': ['heart', 'cardio', 'chest', 'palpitation', 'pulse', 'pressure'],
+    'Dermatologist': ['skin', 'derma', 'rash', 'itch', 'acne', 'mole', 'lesion', 'nevus'],
+    'Orthopedist': ['bone', 'joint', 'knee', 'back', 'spine', 'fracture', 'ortho', 'shoulder', 'hip'],
+    'Neurologist': ['headache', 'migraine', 'seizure', 'numbness', 'dizzy', 'brain', 'nerve', 'neuro'],
+    'Pediatrician': ['child', 'baby', 'infant', 'toddler', 'pediatric', 'growth', 'allergy'],
+    'Psychiatrist': ['mental', 'depress', 'anxiety', 'mood', 'psych', 'behavior'],
+    'Oncologist': ['cancer', 'tumor', 'lump', 'onco', 'chemo', 'radiation', 'mammogram', 'breast', 'bi-rads'],
+    'Gastroenterologist': ['stomach', 'gut', 'digest', 'bowel', 'reflux', 'gastro', 'liver', 'anemia'],
+    'Pulmonologist': ['lung', 'breath', 'cough', 'pulmo', 'respiratory', 'asthma'],
+    'Urologist': ['urine', 'bladder', 'kidney', 'prostate', 'uro'],
+    'Ophthalmologist': ['eye', 'vision', 'sight', 'blind', 'optic'],
+    'ENT Specialist': ['ear', 'nose', 'throat', 'sinus', 'hearing'],
+    'Endocrinologist': ['diabetes', 'thyroid', 'hormone', 'sugar', 'endo'],
+    'Rheumatologist': ['arthritis', 'autoimmune', 'lupus', 'rheum'],
+  };
+
+  for (const [spec, keywords] of Object.entries(specialtyMap)) {
+    if (keywords.some(k => reasonLower.includes(k))) {
+      specialty = spec;
+      break;
+    }
+  }
+  return specialty;
+}
+
 // Create Hono app with middleware
 const app = new Hono<{ Bindings: Env }>();
 
@@ -214,33 +245,8 @@ app.post('/orchestrate', async (c) => {
       }, 400);
     }
 
-    // 1. Determine Specialist based on condition (Expanded keyword matching)
-    let specialty = 'General Practitioner';
-    const reasonLower = referralReason.toLowerCase();
-
-    const specialtyMap: Record<string, string[]> = {
-      'Cardiologist': ['heart', 'cardio', 'chest', 'palpitation', 'pulse', 'pressure'],
-      'Dermatologist': ['skin', 'derma', 'rash', 'itch', 'acne', 'mole', 'lesion', 'nevus'],
-      'Orthopedist': ['bone', 'joint', 'knee', 'back', 'spine', 'fracture', 'ortho', 'shoulder', 'hip'],
-      'Neurologist': ['headache', 'migraine', 'seizure', 'numbness', 'dizzy', 'brain', 'nerve', 'neuro'],
-      'Pediatrician': ['child', 'baby', 'infant', 'toddler', 'pediatric', 'growth', 'allergy'],
-      'Psychiatrist': ['mental', 'depress', 'anxiety', 'mood', 'psych', 'behavior'],
-      'Oncologist': ['cancer', 'tumor', 'lump', 'onco', 'chemo', 'radiation', 'mammogram', 'breast', 'bi-rads'],
-      'Gastroenterologist': ['stomach', 'gut', 'digest', 'bowel', 'reflux', 'gastro', 'liver', 'anemia'],
-      'Pulmonologist': ['lung', 'breath', 'cough', 'pulmo', 'respiratory'],
-      'Urologist': ['urine', 'bladder', 'kidney', 'prostate', 'uro'],
-      'Ophthalmologist': ['eye', 'vision', 'sight', 'blind', 'optic'],
-      'ENT Specialist': ['ear', 'nose', 'throat', 'sinus', 'hearing'],
-      'Endocrinologist': ['diabetes', 'thyroid', 'hormone', 'sugar', 'endo'],
-      'Rheumatologist': ['arthritis', 'autoimmune', 'lupus', 'rheum'],
-    };
-
-    for (const [spec, keywords] of Object.entries(specialtyMap)) {
-      if (keywords.some(k => reasonLower.includes(k))) {
-        specialty = spec;
-        break;
-      }
-    }
+        // 1. Determine Specialist based on condition (Expanded keyword matching)
+    const specialty = determineSpecialty(referralReason);
 
     // 2. Check Insurance (Mock logic)
     const insuranceStatus = (insuranceProvider && insuranceProvider.toLowerCase().includes('blue')) ? 'Approved' : 'Pending Review';
