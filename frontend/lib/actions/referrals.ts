@@ -92,6 +92,14 @@ export const orchestrate = async (patientData: {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(patientData),
     });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `Orchestration failed: ${response.statusText}`,
+      };
+    }
+
     const result = await response.json();
     return {
       success: true,
@@ -101,6 +109,43 @@ export const orchestrate = async (patientData: {
     return {
       success: false,
       message: error instanceof Error ? error.message : "Orchestration failed",
+    };
+  }
+};
+
+export const confirm = async (confirmData: {
+  referralId: string;
+  patientName: string;
+  patientEmail: string;
+  patientPhone: string;
+  doctorName: string;
+  specialty: string;
+  appointmentDate: string;
+  appointmentTime: string;
+}) => {
+  try {
+    const response = await fetch(`${process.env.BACKEND_BASE}/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(confirmData),
+    });
+
+    if (!response.ok) {
+      return {
+        success: false,
+        message: `Confirmation failed: ${response.statusText}`,
+      };
+    }
+
+    const result = await response.json();
+    return {
+      success: true,
+      data: result,
+    };
+  } catch (error) {
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Confirmation failed",
     };
   }
 };

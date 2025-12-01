@@ -1,38 +1,21 @@
 "use client";
 
-import { Button, Skeleton } from "@/components/ui";
-import { uploadReferralFile } from "@/lib/actions/referrals";
+import { Alert, AlertDescription, AlertTitle, Button } from "@/components/ui";
+import { useReferralUpload } from "@/hooks/use-referral-upload";
 import { cn } from "@/utils/cn";
-import { useMutation } from "@tanstack/react-query";
-import { CheckCircle2, FileText, Loader2, X, XCircle } from "lucide-react";
+import { CheckCircle2, FileText, Loader2, Plus, X, XCircle } from "lucide-react";
 import React from "react";
 import { useDropzone } from "react-dropzone";
-import { toast } from "sonner";
+import { ReferralEmailNotification } from "./referral-email-notification";
 import {
   type ExtractionFormData,
   ReferralExtractionForm,
 } from "./referral-extraction-form";
+import { ReferralSmsNotification } from "./referral-sms-notification";
 
 interface UploadedFile {
   file: File;
   id: string;
-}
-
-interface ExtractionResponse {
-  success: boolean;
-  data?: {
-    patientName?: string;
-    dateOfBirth?: string;
-    referralReason?: string;
-    insuranceProvider?: string;
-  };
-  metadata?: {
-    filename?: string;
-    fileSize?: number;
-    textLength?: number;
-    extractedAt?: string;
-  };
-  message?: string;
 }
 
 export const ReferralFileUpload = () => {
@@ -40,31 +23,20 @@ export const ReferralFileUpload = () => {
     null
   );
 
-  const uploadMutation = useMutation<ExtractionResponse, Error, File>({
-    mutationFn: async (file: File) => {
-      const formData = new FormData();
-      formData.append("file", file);
-      const result = await uploadReferralFile(formData);
+  const {
+    uploadMutation,
+    orchestrateMutation,
+    confirmMutation,
+    orchestrationData,
+    resetAll,
+  } = useReferralUpload();
 
-      if (!result.success) {
-        throw new Error(result.message || "Upload failed");
-      }
-
-      return result as ExtractionResponse;
+  const handleFormSubmit = React.useCallback(
+    (data: ExtractionFormData) => {
+      orchestrateMutation.mutate(data);
     },
-    onSuccess: (data, file) => {
-      toast.success(`${file.name} uploaded and extracted successfully`);
-    },
-    onError: (error: Error, file) => {
-      toast.error(`Failed to upload ${file.name}: ${error.message}`);
-    },
-  });
-
-  const handleFormSubmit = React.useCallback((data: ExtractionFormData) => {
-    console.log("Form submitted:", data);
-    toast.info("Orchestration will be implemented next");
-    // TODO: Implement orchestration submission
-  }, []);
+    [orchestrateMutation]
+  );
 
   const onDrop = React.useCallback(
     (acceptedFiles: File[]) => {
@@ -93,8 +65,8 @@ export const ReferralFileUpload = () => {
 
   const removeFile = React.useCallback(() => {
     setUploadedFile(null);
-    uploadMutation.reset();
-  }, [uploadMutation]);
+    resetAll();
+  }, [resetAll]);
 
   const retryUpload = React.useCallback(() => {
     if (!uploadedFile) return;
@@ -102,11 +74,14 @@ export const ReferralFileUpload = () => {
   }, [uploadedFile, uploadMutation]);
 
   const isUploading = uploadMutation.isPending;
-  const isSuccess = uploadMutation.isSuccess;
+  const isExtractionSuccess = uploadMutation.isSuccess;
+  const isOrchestrating =
+    orchestrateMutation.isPending || confirmMutation.isPending;
+  const isComplete = confirmMutation.isSuccess;
   const showDropzone = !uploadedFile || uploadMutation.isError;
 
   return (
-    <div className="flex px-4 py-2 flex-1 flex-col gap-4">
+    <div className="flex px-4 py-2 flex-1 flex-col gap-4 overflow-auto select-auto!">
       {showDropzone && (
         <div
           {...getRootProps({
@@ -156,7 +131,7 @@ export const ReferralFileUpload = () => {
         </div>
       )}
 
-      {isSuccess && uploadedFile && uploadMutation.data && (
+      {isExtractionSuccess && uploadedFile && uploadMutation.data && !isComplete && (
         <div className="flex flex-col gap-4 pb-6">
           <div className="flex items-center gap-3 border rounded-xl corner-smooth bg-background p-4">
             <CheckCircle2 className="size-5 text-green-500 flex-shrink-0" />
@@ -173,6 +148,7 @@ export const ReferralFileUpload = () => {
               size="sm"
               className="h-9 px-2 gap-1.5"
               onClick={removeFile}
+              disabled={isOrchestrating}
             >
               <span>Upload New</span>
               <X className="size-3" strokeWidth={2} />
@@ -182,8 +158,106 @@ export const ReferralFileUpload = () => {
           <ReferralExtractionForm
             extractedData={uploadMutation.data?.data || {}}
             onSubmit={handleFormSubmit}
-            isSubmitting={false}
+            isSubmitting={isOrchestrating}
           />
+        </div>
+      )}
+
+      {isComplete && confirmMutation.data && (
+        <div className="flex flex-col gap-4 pb-6 w-full">
+          <Alert className="bg-green-50 border-green-200">
+            <CheckCircle2 className="text-green-500" />
+            <div className="flex items-start justify-between gap-3 col-start-2">
+              <div className="flex-1">
+                <AlertTitle className="text-green-900">
+                  Appointment Confirmed!
+                </AlertTitle>
+                <AlertDescription className="text-green-700">
+                  Confirmation sent successfully
+                </AlertDescription>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 px-3"
+                onClick={removeFile}
+              >
+                <Plus className="size-4" strokeWidth={1.8} />
+                New Referral
+              </Button>
+            </div>
+          </Alert>
+
+          <div className="flex flex-col gap-4 w-full">
+            {confirmMutation.data?.appointmentDetails && (
+              <div className="border rounded-xl corner-smooth bg-background p-6">
+                <h3 className="text-base font-semibold text-default mb-4">
+                  Appointment Details
+                </h3>
+                <div className="grid gap-1">
+                  <div className="grid grid-cols-[120px_1fr] gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Patient
+                    </span>
+                    <span className="text-sm font-medium text-default">
+                      {confirmMutation.data.appointmentDetails.patient}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Doctor
+                    </span>
+                    <span className="text-sm font-medium text-default">
+                      {confirmMutation.data.appointmentDetails.doctor}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Specialty
+                    </span>
+                    <span className="text-sm font-medium text-default">
+                      {confirmMutation.data.appointmentDetails.specialty}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Date & Time
+                    </span>
+                    <span className="text-sm font-medium text-default">
+                      {confirmMutation.data.appointmentDetails.dateTime}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-[120px_1fr] gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Location
+                    </span>
+                    <span className="text-sm font-medium text-default">
+                      {confirmMutation.data.appointmentDetails.location}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {confirmMutation.data?.notifications && (
+              <div className="flex flex-col gap-4 lg:flex-row">
+                {confirmMutation.data.notifications.sms && (
+                  <ReferralSmsNotification
+                    to={confirmMutation.data.notifications.sms.to}
+                    message={confirmMutation.data.notifications.sms.message}
+                  />
+                )}
+
+                {confirmMutation.data.notifications.email && (
+                  <ReferralEmailNotification
+                    to={confirmMutation.data.notifications.email.to}
+                    subject={confirmMutation.data.notifications.email.subject}
+                    body={confirmMutation.data.notifications.email.body}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
