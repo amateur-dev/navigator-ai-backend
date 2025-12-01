@@ -1,7 +1,7 @@
 import { Service } from '@liquidmetal-ai/raindrop-framework';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
-import { MOCK_REFERRAL_DETAILS, MOCK_REFERRAL_LOGS } from './mockData';
+import { MOCK_REFERRALS_LIST, MOCK_REFERRAL_DETAILS, MOCK_REFERRAL_LOGS } from './mockData';
 // Exported for testing/mocking
 export function determineSpecialty(referralReason) {
     let specialty = 'General Practitioner';
@@ -101,30 +101,21 @@ app.post('/extract', async (c) => {
             return c.json({ error: 'Document not found' }, 404);
         }
         // Use SmartBucket's documentChat for AI extraction  
-        const extractionPrompt = `Extract patient and referral information from this medical referral document.
+        const extractionPrompt = `Extract patient information from this medical referral document.
 
 Return ONLY a JSON object with these exact fields:
 {
-  "patientFirstName": "Patient's first name",
-  "patientLastName": "Patient's last name",
-  "patientEmail": "Patient's email address (if available, else null)",
-  "age": "Patient's age (number, if available, else null)",
-  "specialty": "Medical specialty for referral",
-  "payer": "Insurance payer name",
-  "plan": "Insurance plan name",
-  "urgency": "Urgency level (routine, urgent, or stat)",
-  "appointmentDate": "Appointment date if specified (YYYY-MM-DD, else null)",
-  "referralDate": "Date referral was created (YYYY-MM-DD)",
-  "providerName": "Referring provider's name",
-  "facilityName": "Facility/practice name",
-  "reason": "Reason for referral"
+  "patientName": "Full patient name (first and last)",
+  "dateOfBirth": "YYYY-MM-DD format", 
+  "referralReason": "Medical condition or symptoms",
+  "insuranceProvider": "Insurance company name"
 }
 
 Instructions:
 - Read the document carefully
 - Extract EXACTLY what the document says
 - Convert dates to YYYY-MM-DD format
-- If a field is missing, use null
+- If a field is missing, use "Unknown"
 - Return ONLY valid JSON, no markdown or explanation`;
         const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
         // Retry logic for documentChat (may need time to index)
@@ -207,23 +198,21 @@ Instructions:
 app.post('/orchestrate', async (c) => {
     try {
         const body = await c.req.json();
-        const { referralData } = body;
-        if (!referralData || !referralData.patientFirstName || !referralData.reason) {
+        const { patientName, referralReason, insuranceProvider } = body;
+        if (!patientName || !referralReason) {
             return c.json({
                 success: false,
                 error: {
                     code: "INVALID_REQUEST",
-                    message: "Missing required fields in referralData",
+                    message: "Missing required fields",
                     statusCode: 400
                 }
             }, 400);
         }
-        const { patientFirstName, patientLastName, patientEmail, age, specialty: requestedSpecialty, payer, plan, urgency, appointmentDate, referralDate, providerName, facilityName, reason } = referralData;
         // 1. Determine Specialist based on condition (Expanded keyword matching)
-        // Use requested specialty if available, otherwise infer from reason
-        const specialty = requestedSpecialty || determineSpecialty(reason);
+        const specialty = determineSpecialty(referralReason);
         // 2. Check Insurance (Mock logic)
-        const insuranceStatus = (payer && payer.toLowerCase().includes('blue')) ? 'Approved' : 'Pending Review';
+        const insuranceStatus = (insuranceProvider && insuranceProvider.toLowerCase().includes('blue')) ? 'Approved' : 'Pending Review';
         // 3. Find Available Slots from DB
         const db = c.env.REFERRALS_DB;
         // Find specialists with the matching specialty
@@ -266,19 +255,8 @@ app.post('/orchestrate', async (c) => {
             availableSlots = slots.map((slot) => slot.start_time);
         }
         // 4. Create Referral Record in DB
-        // Calculate no-show risk (mock logic)
-        const noShowRisk = Math.floor(Math.random() * 30) + 10; // 10-40%
-        const insertQuery = `INSERT INTO referrals (
-      patient_first_name, patient_last_name, patient_email, age, 
-      specialty, payer, plan, urgency, 
-      appointment_date, referral_date, provider_name, facility_name, reason,
-      specialist_id, status, no_show_risk
-    ) VALUES (
-      '${patientFirstName}', '${patientLastName}', '${patientEmail || ''}', ${age || 'NULL'},
-      '${specialty}', '${payer || ''}', '${plan || ''}', '${urgency || 'routine'}',
-      '${appointmentDate || ''}', '${referralDate || new Date().toISOString()}', '${providerName || ''}', '${facilityName || ''}', '${reason.replace(/'/g, "''")}',
-      ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending', ${noShowRisk}
-    )`;
+        const insertQuery = `INSERT INTO referrals (patient_name, condition, insurance_provider, specialist_id, status) 
+       VALUES ('${patientName}', '${referralReason}', '${insuranceProvider}', ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
         await db.executeQuery({ sqlQuery: insertQuery });
         // SQLite specific: Get last ID
         const idResult = await db.executeQuery({ sqlQuery: 'SELECT last_insert_rowid() as id' });
@@ -289,17 +267,15 @@ app.post('/orchestrate', async (c) => {
             data: {
                 referralId: `ref-${referralId}`,
                 status: 'Processed',
-                orchestrationId: `orch-${Date.now()}`,
-                completedSteps: [
-                    { id: 'step-1', label: 'Intake', status: 'completed', completedAt: new Date().toISOString() }
-                ],
-                appointmentDetails: selectedSpecialist ? {
-                    providerName: selectedSpecialist.name,
-                    facilityName: 'Downtown Medical Center', // Mock
-                    facilityAddress: '123 Main St, New York, NY 10001' // Mock
-                } : null,
-                notificationsSent: { sms: false, email: false },
-                estimatedCompletionTime: new Date(Date.now() + 86400000).toISOString()
+                specialist: specialty,
+                assignedDoctor: selectedSpecialist ? selectedSpecialist.name : 'Pending Assignment',
+                insuranceStatus,
+                availableSlots,
+                debug: {
+                    specialtyUsed: specialty,
+                    specialistsFound: specialists.length,
+                    slotsFound: availableSlots.length
+                }
             },
             message: 'Referral orchestration completed successfully'
         });
@@ -345,24 +321,14 @@ app.post('/seed', async (c) => {
             sqlQuery: `
       CREATE TABLE IF NOT EXISTS referrals (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          patient_first_name TEXT NOT NULL,
-          patient_last_name TEXT NOT NULL,
-          patient_email TEXT,
-          age INTEGER,
-          specialty TEXT,
-          payer TEXT,
-          plan TEXT,
-          urgency TEXT,
-          appointment_date TEXT,
-          referral_date TEXT,
-          provider_name TEXT,
-          facility_name TEXT,
-          reason TEXT,
+          patient_name TEXT NOT NULL,
+          dob TEXT,
+          condition TEXT,
+          insurance_provider TEXT,
           specialist_id INTEGER REFERENCES specialists(id),
           slot_id INTEGER REFERENCES slots(id),
           status TEXT DEFAULT 'Pending',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-          no_show_risk INTEGER DEFAULT 0
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
       );
     `
         });
@@ -469,95 +435,8 @@ app.post('/seed', async (c) => {
     }
 });
 // Get all referrals
-app.get('/referrals', async (c) => {
-    try {
-        const db = c.env.REFERRALS_DB;
-        const { page = '1', limit = '50', status, specialty, search } = c.req.query();
-        const pageNum = parseInt(page);
-        const limitNum = parseInt(limit);
-        const offset = (pageNum - 1) * limitNum;
-        // Build query
-        let query = 'SELECT * FROM referrals WHERE 1=1';
-        if (status) {
-            const statuses = status.split(',').map(s => `'${s.trim()}'`).join(',');
-            query += ` AND status IN (${statuses})`;
-        }
-        if (specialty) {
-            const specialties = specialty.split(',').map(s => `'${s.trim()}'`).join(',');
-            query += ` AND specialty IN (${specialties})`;
-        }
-        if (search) {
-            query += ` AND (patient_first_name LIKE '%${search}%' OR patient_last_name LIKE '%${search}%' OR patient_email LIKE '%${search}%')`;
-        }
-        // Get total count
-        const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as total');
-        const countResult = await db.executeQuery({ sqlQuery: countQuery });
-        // Helper to extract rows
-        const getRows = (result) => {
-            if (Array.isArray(result))
-                return result;
-            if (result && result.results) {
-                if (Array.isArray(result.results))
-                    return result.results;
-                if (typeof result.results === 'string') {
-                    try {
-                        return JSON.parse(result.results);
-                    }
-                    catch (e) {
-                        console.error('Failed to parse SQL results:', e);
-                        return [];
-                    }
-                }
-            }
-            if (result && Array.isArray(result.rows))
-                return result.rows;
-            return [];
-        };
-        const countRows = getRows(countResult);
-        const total = countRows[0]?.total || 0;
-        // Add pagination
-        query += ` ORDER BY created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
-        const result = await db.executeQuery({ sqlQuery: query });
-        const rows = getRows(result);
-        const referrals = rows.map((row) => ({
-            id: `ref-${row.id}`,
-            patientFirstName: row.patient_first_name,
-            patientLastName: row.patient_last_name,
-            patientEmail: row.patient_email,
-            specialty: row.specialty,
-            payer: row.payer,
-            status: row.status,
-            appointmentDate: row.appointment_date,
-            referralDate: row.referral_date,
-            noShowRisk: row.no_show_risk
-        }));
-        return c.json({
-            success: true,
-            data: {
-                referrals,
-                pagination: {
-                    page: pageNum,
-                    limit: limitNum,
-                    total,
-                    totalPages: Math.ceil(total / limitNum),
-                    hasNextPage: pageNum * limitNum < total,
-                    hasPreviousPage: pageNum > 1
-                }
-            },
-            message: 'Referrals retrieved successfully'
-        });
-    }
-    catch (error) {
-        console.error('Get referrals error:', error);
-        return c.json({
-            success: false,
-            error: {
-                code: "DB_ERROR",
-                message: "Failed to retrieve referrals: " + (error instanceof Error ? error.message : String(error)),
-                statusCode: 500
-            }
-        }, 500);
-    }
+app.get('/referrals', (c) => {
+    return c.json(MOCK_REFERRALS_LIST);
 });
 // Get referral details
 app.get('/referral/:id', (c) => {
@@ -685,6 +564,166 @@ This is an automated confirmation. Please do not reply to this email.`;
         }, 500);
     }
 });
+// Metrics Endpoint
+app.get('/metrics', async (c) => {
+    try {
+        const db = c.env.REFERRALS_DB;
+        // Helper to extract rows
+        const getRows = (result) => {
+            if (Array.isArray(result))
+                return result;
+            if (result && result.results) {
+                if (Array.isArray(result.results))
+                    return result.results;
+                if (typeof result.results === 'string') {
+                    try {
+                        return JSON.parse(result.results);
+                    }
+                    catch (e) {
+                        console.error('Failed to parse SQL results:', e);
+                        return [];
+                    }
+                }
+            }
+            if (result && Array.isArray(result.rows))
+                return result.rows;
+            return [];
+        };
+        // 1. Overview Metrics
+        const overviewQuery = `
+      SELECT 
+        COUNT(*) as totalReferrals,
+        SUM(CASE WHEN status IN ('Pending', 'Scheduled', 'InProgress') THEN 1 ELSE 0 END) as activeReferrals,
+        SUM(CASE WHEN status = 'Completed' AND created_at >= date('now', 'start of month') THEN 1 ELSE 0 END) as completedThisMonth,
+        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pendingReview,
+        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as totalCompleted
+      FROM referrals
+    `;
+        const overviewResult = await db.executeQuery({ sqlQuery: overviewQuery });
+        const overviewRows = getRows(overviewResult);
+        const overviewData = overviewRows[0] || {};
+        const successRate = overviewData.totalReferrals > 0
+            ? (overviewData.totalCompleted / overviewData.totalReferrals) * 100
+            : 0;
+        // 2. Status Breakdown
+        const statusQuery = `SELECT status, COUNT(*) as count FROM referrals GROUP BY status`;
+        const statusResult = await db.executeQuery({ sqlQuery: statusQuery });
+        const statusRows = getRows(statusResult);
+        const referralsByStatus = statusRows.reduce((acc, row) => {
+            acc[row.status.toLowerCase()] = row.count;
+            return acc;
+        }, {});
+        // 3. Top Specialties
+        const specialtyQuery = `
+      SELECT specialty, COUNT(*) as count 
+      FROM referrals 
+      GROUP BY specialty 
+      ORDER BY count DESC 
+      LIMIT 5
+    `;
+        const specialtyResult = await db.executeQuery({ sqlQuery: specialtyQuery });
+        const specialtyRows = getRows(specialtyResult);
+        const topSpecialties = specialtyRows.map((row) => ({
+            specialty: row.specialty,
+            count: row.count,
+            percentage: overviewData.totalReferrals > 0 ? (row.count / overviewData.totalReferrals) * 100 : 0
+        }));
+        // 4. Insurance Breakdown
+        const payerQuery = `
+      SELECT payer, COUNT(*) as count 
+      FROM referrals 
+      WHERE payer IS NOT NULL AND payer != ''
+      GROUP BY payer 
+      ORDER BY count DESC 
+      LIMIT 5
+    `;
+        const payerResult = await db.executeQuery({ sqlQuery: payerQuery });
+        const payerRows = getRows(payerResult);
+        const insuranceBreakdown = {
+            topPayers: payerRows.map((row) => ({
+                payer: row.payer,
+                count: row.count
+            }))
+        };
+        // 5. Appointment Metrics
+        const apptQuery = `
+      SELECT 
+        SUM(CASE WHEN status = 'Scheduled' AND date(appointment_date) = date('now') THEN 1 ELSE 0 END) as upcomingToday,
+        SUM(CASE WHEN status = 'Scheduled' AND date(appointment_date) BETWEEN date('now') AND date('now', '+7 days') THEN 1 ELSE 0 END) as upcomingThisWeek,
+        SUM(CASE WHEN status = 'Scheduled' AND strftime('%Y-%m', appointment_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) as upcomingThisMonth
+      FROM referrals
+    `;
+        const apptResult = await db.executeQuery({ sqlQuery: apptQuery });
+        const apptRows = getRows(apptResult);
+        const appointments = apptRows[0] || {};
+        // 6. Urgency Levels
+        const urgencyQuery = `SELECT urgency, COUNT(*) as count FROM referrals GROUP BY urgency`;
+        const urgencyResult = await db.executeQuery({ sqlQuery: urgencyQuery });
+        const urgencyRows = getRows(urgencyResult);
+        const urgencyLevels = urgencyRows.reduce((acc, row) => {
+            acc[row.urgency ? row.urgency.toLowerCase() : 'unknown'] = row.count;
+            return acc;
+        }, {});
+        // 7. Alerts (Mock/Calculated)
+        const alerts = {
+            pendingOver48h: 0, // Would need date calc in SQL
+            upcomingHighRiskNoShows: 0,
+            totalAlerts: 0
+        };
+        // Simple check for pending > 48h
+        const pendingOldQuery = `SELECT COUNT(*) as count FROM referrals WHERE status = 'Pending' AND created_at < date('now', '-2 days')`;
+        const pendingOldResult = await db.executeQuery({ sqlQuery: pendingOldQuery });
+        alerts.pendingOver48h = getRows(pendingOldResult)[0]?.count || 0;
+        alerts.totalAlerts = alerts.pendingOver48h;
+        return c.json({
+            success: true,
+            data: {
+                overview: {
+                    totalReferrals: overviewData.totalReferrals,
+                    activeReferrals: overviewData.activeReferrals,
+                    completedThisMonth: overviewData.completedThisMonth,
+                    pendingReview: overviewData.pendingReview,
+                    averageProcessingTime: "2.3 days", // Mock for now
+                    successRate: parseFloat(successRate.toFixed(1))
+                },
+                referralsByStatus,
+                topSpecialties,
+                insuranceBreakdown,
+                appointments,
+                providers: {
+                    totalSpecialists: 48, // Mock
+                    availableSpecialists: 42, // Mock
+                    utilizationRate: 78.5 // Mock
+                },
+                trends: {
+                    // Mock trends for chart
+                    dailyReferrals: Array.from({ length: 7 }, (_, i) => ({
+                        date: new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0],
+                        count: Math.floor(Math.random() * 10) + 5
+                    }))
+                },
+                urgencyLevels,
+                efficiency: {
+                    averageExtractionTime: "3.2 seconds",
+                    averageOrchestrationTime: "1.8 seconds"
+                },
+                alerts,
+                timestamp: new Date().toISOString()
+            }
+        });
+    }
+    catch (error) {
+        console.error('Metrics error:', error);
+        return c.json({
+            success: false,
+            error: {
+                code: "METRICS_ERROR",
+                message: "Failed to retrieve metrics: " + (error instanceof Error ? error.message : String(error)),
+                statusCode: 500
+            }
+        }, 500);
+    }
+});
 // === Basic API Routes ===
 app.get('/api/hello', (c) => {
     return c.json({ message: 'Hello from Hono!' });
@@ -704,20 +743,20 @@ app.post('/api/echo', async (c) => {
 app.post('/api/actor-call', async (c) => {
   try {
     const { message, actorName } = await c.req.json();
-
+ 
     if (!actorName) {
       return c.json({ error: 'actorName is required' }, 400);
     }
-
+ 
     // Get actor namespace and create actor instance
     // Note: Replace MY_ACTOR with your actual actor binding name
     const actorNamespace = c.env.MY_ACTOR; // This would be bound in raindrop.manifest
     const actorId = actorNamespace.idFromName(actorName);
     const actor = actorNamespace.get(actorId);
-
+ 
     // Call actor method (assuming actor has a 'processMessage' method)
     const response = await actor.processMessage(message);
-
+ 
     return c.json({
       success: true,
       actorName,
@@ -736,15 +775,15 @@ app.post('/api/actor-call', async (c) => {
 app.get('/api/actor-state/:actorName', async (c) => {
   try {
     const actorName = c.req.param('actorName');
-
+ 
     // Get actor instance
     const actorNamespace = c.env.MY_ACTOR;
     const actorId = actorNamespace.idFromName(actorName);
     const actor = actorNamespace.get(actorId);
-
+ 
     // Get actor state (assuming actor has a 'getState' method)
     const state = await actor.getState();
-
+ 
     return c.json({
       success: true,
       actorName,
@@ -766,15 +805,15 @@ app.post('/api/upload', async (c) => {
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
     const description = formData.get('description') as string;
-
+ 
     if (!file) {
       return c.json({ error: 'No file provided' }, 400);
     }
-
+ 
     // Upload to SmartBucket (Replace MY_SMARTBUCKET with your binding name)
     const smartbucket = c.env.MY_SMARTBUCKET;
     const arrayBuffer = await file.arrayBuffer();
-
+ 
     const putOptions: BucketPutOptions = {
       httpMetadata: {
         contentType: file.type || 'application/octet-stream',
@@ -786,9 +825,9 @@ app.post('/api/upload', async (c) => {
         uploadedAt: new Date().toISOString()
       }
     };
-
+ 
     const result = await smartbucket.put(file.name, new Uint8Array(arrayBuffer), putOptions);
-
+ 
     return c.json({
       success: true,
       message: 'File uploaded successfully',
@@ -809,15 +848,15 @@ app.post('/api/upload', async (c) => {
 app.get('/api/file/:filename', async (c) => {
   try {
     const filename = c.req.param('filename');
-
+ 
     // Get file from SmartBucket
     const smartbucket = c.env.MY_SMARTBUCKET;
     const file = await smartbucket.get(filename);
-
+ 
     if (!file) {
       return c.json({ error: 'File not found' }, 404);
     }
-
+ 
     return new Response(file.body, {
       headers: {
         'Content-Type': file.httpMetadata?.contentType || 'application/octet-stream',
@@ -840,13 +879,13 @@ app.get('/api/file/:filename', async (c) => {
 app.post('/api/search', async (c) => {
   try {
     const { query, page = 1, pageSize = 10 } = await c.req.json();
-
+ 
     if (!query) {
       return c.json({ error: 'Query is required' }, 400);
     }
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
-
+ 
     // For initial search
     if (page === 1) {
       const requestId = `search-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -854,7 +893,7 @@ app.post('/api/search', async (c) => {
         input: query,
         requestId
       });
-
+ 
       return c.json({
         success: true,
         message: 'Search completed',
@@ -871,13 +910,13 @@ app.post('/api/search', async (c) => {
       if (!requestId) {
         return c.json({ error: 'Request ID required for pagination' }, 400);
       }
-
+ 
       const paginatedResults = await smartbucket.getPaginatedResults({
         requestId,
         page,
         pageSize
       });
-
+ 
       return c.json({
         success: true,
         message: 'Paginated results',
@@ -899,19 +938,19 @@ app.post('/api/search', async (c) => {
 app.post('/api/chunk-search', async (c) => {
   try {
     const { query } = await c.req.json();
-
+ 
     if (!query) {
       return c.json({ error: 'Query is required' }, 400);
     }
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
     const requestId = `chunk-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
+ 
     const results = await smartbucket.chunkSearch({
       input: query,
       requestId
     });
-
+ 
     return c.json({
       success: true,
       message: 'Chunk search completed',
@@ -931,20 +970,20 @@ app.post('/api/chunk-search', async (c) => {
 app.post('/api/document-chat', async (c) => {
   try {
     const { objectId, query } = await c.req.json();
-
+ 
     if (!objectId || !query) {
       return c.json({ error: 'objectId and query are required' }, 400);
     }
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
     const requestId = `chat-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
+ 
     const response = await smartbucket.documentChat({
       objectId,
       input: query,
       requestId
     });
-
+ 
     return c.json({
       success: true,
       message: 'Document chat completed',
@@ -967,16 +1006,16 @@ app.get('/api/list', async (c) => {
     const url = new URL(c.req.url);
     const prefix = url.searchParams.get('prefix') || undefined;
     const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
-
+ 
     const listOptions: BucketListOptions = {
       prefix,
       limit
     };
-
+ 
     const result = await smartbucket.list(listOptions);
-
+ 
     return c.json({
       success: true,
       objects: result.objects.map(obj => ({
@@ -1002,20 +1041,20 @@ app.get('/api/list', async (c) => {
 app.post('/api/cache', async (c) => {
   try {
     const { key, value, ttl } = await c.req.json();
-
+ 
     if (!key || value === undefined) {
       return c.json({ error: 'key and value are required' }, 400);
     }
-
+ 
     const cache = c.env.MY_CACHE;
-
+ 
     const putOptions: KvCachePutOptions = {};
     if (ttl) {
       putOptions.expirationTtl = ttl;
     }
-
+ 
     await cache.put(key, JSON.stringify(value), putOptions);
-
+ 
     return c.json({
       success: true,
       message: 'Data cached successfully',
@@ -1034,19 +1073,19 @@ app.post('/api/cache', async (c) => {
 app.get('/api/cache/:key', async (c) => {
   try {
     const key = c.req.param('key');
-
+ 
     const cache = c.env.MY_CACHE;
-
+ 
     const getOptions: KvCacheGetOptions<'json'> = {
       type: 'json'
     };
-
+ 
     const value = await cache.get(key, getOptions);
-
+ 
     if (value === null) {
       return c.json({ error: 'Key not found in cache' }, 404);
     }
-
+ 
     return c.json({
       success: true,
       key,
@@ -1066,20 +1105,20 @@ app.get('/api/cache/:key', async (c) => {
 app.post('/api/queue/send', async (c) => {
   try {
     const { message, delaySeconds } = await c.req.json();
-
+ 
     if (!message) {
       return c.json({ error: 'message is required' }, 400);
     }
-
+ 
     const queue = c.env.MY_QUEUE;
-
+ 
     const sendOptions: QueueSendOptions = {};
     if (delaySeconds) {
       sendOptions.delaySeconds = delaySeconds;
     }
-
+ 
     await queue.send(message, sendOptions);
-
+ 
     return c.json({
       success: true,
       message: 'Message sent to queue'

@@ -245,7 +245,7 @@ app.post('/orchestrate', async (c) => {
       }, 400);
     }
 
-        // 1. Determine Specialist based on condition (Expanded keyword matching)
+    // 1. Determine Specialist based on condition (Expanded keyword matching)
     const specialty = determineSpecialty(referralReason);
 
     // 2. Check Insurance (Mock logic)
@@ -647,6 +647,174 @@ This is an automated confirmation. Please do not reply to this email.`;
   }
 });
 
+// Metrics Endpoint
+app.get('/metrics', async (c) => {
+  try {
+    const db = c.env.REFERRALS_DB as any;
+
+    // Helper to extract rows
+    const getRows = (result: any) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === 'string') {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            console.error('Failed to parse SQL results:', e);
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+
+    // 1. Overview Metrics
+    const overviewQuery = `
+      SELECT 
+        COUNT(*) as totalReferrals,
+        SUM(CASE WHEN status IN ('Pending', 'Scheduled', 'InProgress') THEN 1 ELSE 0 END) as activeReferrals,
+        SUM(CASE WHEN status = 'Completed' AND created_at >= date('now', 'start of month') THEN 1 ELSE 0 END) as completedThisMonth,
+        SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pendingReview,
+        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as totalCompleted
+      FROM referrals
+    `;
+    const overviewResult = await db.executeQuery({ sqlQuery: overviewQuery });
+    const overviewRows = getRows(overviewResult);
+    const overviewData = overviewRows[0] || {};
+
+    const successRate = overviewData.totalReferrals > 0
+      ? (overviewData.totalCompleted / overviewData.totalReferrals) * 100
+      : 0;
+
+    // 2. Status Breakdown
+    const statusQuery = `SELECT status, COUNT(*) as count FROM referrals GROUP BY status`;
+    const statusResult = await db.executeQuery({ sqlQuery: statusQuery });
+    const statusRows = getRows(statusResult);
+    const referralsByStatus = statusRows.reduce((acc: any, row: any) => {
+      acc[row.status.toLowerCase()] = row.count;
+      return acc;
+    }, {});
+
+    // 3. Top Specialties
+    const specialtyQuery = `
+      SELECT specialty, COUNT(*) as count 
+      FROM referrals 
+      GROUP BY specialty 
+      ORDER BY count DESC 
+      LIMIT 5
+    `;
+    const specialtyResult = await db.executeQuery({ sqlQuery: specialtyQuery });
+    const specialtyRows = getRows(specialtyResult);
+    const topSpecialties = specialtyRows.map((row: any) => ({
+      specialty: row.specialty,
+      count: row.count,
+      percentage: overviewData.totalReferrals > 0 ? (row.count / overviewData.totalReferrals) * 100 : 0
+    }));
+
+    // 4. Insurance Breakdown
+    const payerQuery = `
+      SELECT payer, COUNT(*) as count 
+      FROM referrals 
+      WHERE payer IS NOT NULL AND payer != ''
+      GROUP BY payer 
+      ORDER BY count DESC 
+      LIMIT 5
+    `;
+    const payerResult = await db.executeQuery({ sqlQuery: payerQuery });
+    const payerRows = getRows(payerResult);
+    const insuranceBreakdown = {
+      topPayers: payerRows.map((row: any) => ({
+        payer: row.payer,
+        count: row.count
+      }))
+    };
+
+    // 5. Appointment Metrics
+    const apptQuery = `
+      SELECT 
+        SUM(CASE WHEN status = 'Scheduled' AND date(appointment_date) = date('now') THEN 1 ELSE 0 END) as upcomingToday,
+        SUM(CASE WHEN status = 'Scheduled' AND date(appointment_date) BETWEEN date('now') AND date('now', '+7 days') THEN 1 ELSE 0 END) as upcomingThisWeek,
+        SUM(CASE WHEN status = 'Scheduled' AND strftime('%Y-%m', appointment_date) = strftime('%Y-%m', 'now') THEN 1 ELSE 0 END) as upcomingThisMonth
+      FROM referrals
+    `;
+    const apptResult = await db.executeQuery({ sqlQuery: apptQuery });
+    const apptRows = getRows(apptResult);
+    const appointments = apptRows[0] || {};
+
+    // 6. Urgency Levels
+    const urgencyQuery = `SELECT urgency, COUNT(*) as count FROM referrals GROUP BY urgency`;
+    const urgencyResult = await db.executeQuery({ sqlQuery: urgencyQuery });
+    const urgencyRows = getRows(urgencyResult);
+    const urgencyLevels = urgencyRows.reduce((acc: any, row: any) => {
+      acc[row.urgency ? row.urgency.toLowerCase() : 'unknown'] = row.count;
+      return acc;
+    }, {});
+
+    // 7. Alerts (Mock/Calculated)
+    const alerts = {
+      pendingOver48h: 0, // Would need date calc in SQL
+      upcomingHighRiskNoShows: 0,
+      totalAlerts: 0
+    };
+
+    // Simple check for pending > 48h
+    const pendingOldQuery = `SELECT COUNT(*) as count FROM referrals WHERE status = 'Pending' AND created_at < date('now', '-2 days')`;
+    const pendingOldResult = await db.executeQuery({ sqlQuery: pendingOldQuery });
+    alerts.pendingOver48h = getRows(pendingOldResult)[0]?.count || 0;
+    alerts.totalAlerts = alerts.pendingOver48h;
+
+    return c.json({
+      success: true,
+      data: {
+        overview: {
+          totalReferrals: overviewData.totalReferrals,
+          activeReferrals: overviewData.activeReferrals,
+          completedThisMonth: overviewData.completedThisMonth,
+          pendingReview: overviewData.pendingReview,
+          averageProcessingTime: "2.3 days", // Mock for now
+          successRate: parseFloat(successRate.toFixed(1))
+        },
+        referralsByStatus,
+        topSpecialties,
+        insuranceBreakdown,
+        appointments,
+        providers: {
+          totalSpecialists: 48, // Mock
+          availableSpecialists: 42, // Mock
+          utilizationRate: 78.5 // Mock
+        },
+        trends: {
+          // Mock trends for chart
+          dailyReferrals: Array.from({ length: 7 }, (_, i) => ({
+            date: new Date(Date.now() - (6 - i) * 86400000).toISOString().split('T')[0],
+            count: Math.floor(Math.random() * 10) + 5
+          }))
+        },
+        urgencyLevels,
+        efficiency: {
+          averageExtractionTime: "3.2 seconds",
+          averageOrchestrationTime: "1.8 seconds"
+        },
+        alerts,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Metrics error:', error);
+    return c.json({
+      success: false,
+      error: {
+        code: "METRICS_ERROR",
+        message: "Failed to retrieve metrics: " + (error instanceof Error ? error.message : String(error)),
+        statusCode: 500
+      }
+    }, 500);
+  }
+});
+
 // === Basic API Routes ===
 app.get('/api/hello', (c) => {
   return c.json({ message: 'Hello from Hono!' });
@@ -669,20 +837,20 @@ app.post('/api/echo', async (c) => {
 app.post('/api/actor-call', async (c) => {
   try {
     const { message, actorName } = await c.req.json();
-
+ 
     if (!actorName) {
       return c.json({ error: 'actorName is required' }, 400);
     }
-
+ 
     // Get actor namespace and create actor instance
     // Note: Replace MY_ACTOR with your actual actor binding name
     const actorNamespace = c.env.MY_ACTOR; // This would be bound in raindrop.manifest
     const actorId = actorNamespace.idFromName(actorName);
     const actor = actorNamespace.get(actorId);
-
+ 
     // Call actor method (assuming actor has a 'processMessage' method)
     const response = await actor.processMessage(message);
-
+ 
     return c.json({
       success: true,
       actorName,
@@ -702,15 +870,15 @@ app.post('/api/actor-call', async (c) => {
 app.get('/api/actor-state/:actorName', async (c) => {
   try {
     const actorName = c.req.param('actorName');
-
+ 
     // Get actor instance
     const actorNamespace = c.env.MY_ACTOR;
     const actorId = actorNamespace.idFromName(actorName);
     const actor = actorNamespace.get(actorId);
-
+ 
     // Get actor state (assuming actor has a 'getState' method)
     const state = await actor.getState();
-
+ 
     return c.json({
       success: true,
       actorName,
@@ -733,15 +901,15 @@ app.post('/api/upload', async (c) => {
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
     const description = formData.get('description') as string;
-
+ 
     if (!file) {
       return c.json({ error: 'No file provided' }, 400);
     }
-
+ 
     // Upload to SmartBucket (Replace MY_SMARTBUCKET with your binding name)
     const smartbucket = c.env.MY_SMARTBUCKET;
     const arrayBuffer = await file.arrayBuffer();
-
+ 
     const putOptions: BucketPutOptions = {
       httpMetadata: {
         contentType: file.type || 'application/octet-stream',
@@ -753,9 +921,9 @@ app.post('/api/upload', async (c) => {
         uploadedAt: new Date().toISOString()
       }
     };
-
+ 
     const result = await smartbucket.put(file.name, new Uint8Array(arrayBuffer), putOptions);
-
+ 
     return c.json({
       success: true,
       message: 'File uploaded successfully',
@@ -777,15 +945,15 @@ app.post('/api/upload', async (c) => {
 app.get('/api/file/:filename', async (c) => {
   try {
     const filename = c.req.param('filename');
-
+ 
     // Get file from SmartBucket
     const smartbucket = c.env.MY_SMARTBUCKET;
     const file = await smartbucket.get(filename);
-
+ 
     if (!file) {
       return c.json({ error: 'File not found' }, 404);
     }
-
+ 
     return new Response(file.body, {
       headers: {
         'Content-Type': file.httpMetadata?.contentType || 'application/octet-stream',
@@ -809,13 +977,13 @@ app.get('/api/file/:filename', async (c) => {
 app.post('/api/search', async (c) => {
   try {
     const { query, page = 1, pageSize = 10 } = await c.req.json();
-
+ 
     if (!query) {
       return c.json({ error: 'Query is required' }, 400);
     }
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
-
+ 
     // For initial search
     if (page === 1) {
       const requestId = `search-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -823,7 +991,7 @@ app.post('/api/search', async (c) => {
         input: query,
         requestId
       });
-
+ 
       return c.json({
         success: true,
         message: 'Search completed',
@@ -840,13 +1008,13 @@ app.post('/api/search', async (c) => {
       if (!requestId) {
         return c.json({ error: 'Request ID required for pagination' }, 400);
       }
-
+ 
       const paginatedResults = await smartbucket.getPaginatedResults({
         requestId,
         page,
         pageSize
       });
-
+ 
       return c.json({
         success: true,
         message: 'Paginated results',
@@ -869,19 +1037,19 @@ app.post('/api/search', async (c) => {
 app.post('/api/chunk-search', async (c) => {
   try {
     const { query } = await c.req.json();
-
+ 
     if (!query) {
       return c.json({ error: 'Query is required' }, 400);
     }
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
     const requestId = `chunk-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
+ 
     const results = await smartbucket.chunkSearch({
       input: query,
       requestId
     });
-
+ 
     return c.json({
       success: true,
       message: 'Chunk search completed',
@@ -902,20 +1070,20 @@ app.post('/api/chunk-search', async (c) => {
 app.post('/api/document-chat', async (c) => {
   try {
     const { objectId, query } = await c.req.json();
-
+ 
     if (!objectId || !query) {
       return c.json({ error: 'objectId and query are required' }, 400);
     }
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
     const requestId = `chat-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
+ 
     const response = await smartbucket.documentChat({
       objectId,
       input: query,
       requestId
     });
-
+ 
     return c.json({
       success: true,
       message: 'Document chat completed',
@@ -939,16 +1107,16 @@ app.get('/api/list', async (c) => {
     const url = new URL(c.req.url);
     const prefix = url.searchParams.get('prefix') || undefined;
     const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
-
+ 
     const smartbucket = c.env.MY_SMARTBUCKET;
-
+ 
     const listOptions: BucketListOptions = {
       prefix,
       limit
     };
-
+ 
     const result = await smartbucket.list(listOptions);
-
+ 
     return c.json({
       success: true,
       objects: result.objects.map(obj => ({
@@ -975,20 +1143,20 @@ app.get('/api/list', async (c) => {
 app.post('/api/cache', async (c) => {
   try {
     const { key, value, ttl } = await c.req.json();
-
+ 
     if (!key || value === undefined) {
       return c.json({ error: 'key and value are required' }, 400);
     }
-
+ 
     const cache = c.env.MY_CACHE;
-
+ 
     const putOptions: KvCachePutOptions = {};
     if (ttl) {
       putOptions.expirationTtl = ttl;
     }
-
+ 
     await cache.put(key, JSON.stringify(value), putOptions);
-
+ 
     return c.json({
       success: true,
       message: 'Data cached successfully',
@@ -1008,19 +1176,19 @@ app.post('/api/cache', async (c) => {
 app.get('/api/cache/:key', async (c) => {
   try {
     const key = c.req.param('key');
-
+ 
     const cache = c.env.MY_CACHE;
-
+ 
     const getOptions: KvCacheGetOptions<'json'> = {
       type: 'json'
     };
-
+ 
     const value = await cache.get(key, getOptions);
-
+ 
     if (value === null) {
       return c.json({ error: 'Key not found in cache' }, 404);
     }
-
+ 
     return c.json({
       success: true,
       key,
@@ -1041,20 +1209,20 @@ app.get('/api/cache/:key', async (c) => {
 app.post('/api/queue/send', async (c) => {
   try {
     const { message, delaySeconds } = await c.req.json();
-
+ 
     if (!message) {
       return c.json({ error: 'message is required' }, 400);
     }
-
+ 
     const queue = c.env.MY_QUEUE;
-
+ 
     const sendOptions: QueueSendOptions = {};
     if (delaySeconds) {
       sendOptions.delaySeconds = delaySeconds;
     }
-
+ 
     await queue.send(message, sendOptions);
-
+ 
     return c.json({
       success: true,
       message: 'Message sent to queue'
