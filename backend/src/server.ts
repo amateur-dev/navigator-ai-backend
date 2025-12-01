@@ -48,31 +48,119 @@ app.post('/upload', upload.single('file'), async (req: any, res) => {
     }
 });
 
+// In-memory storage for local development
+let referrals: any[] = [];
+let specialists = [
+    { id: 1, name: 'Dr. James Mitchell', specialty: 'Cardiologist' },
+    { id: 2, name: 'Dr. Emily Chen', specialty: 'Dermatologist' }
+];
+
+// Helper to determine specialty
+function determineSpecialty(reason: string): string {
+    const r = reason.toLowerCase();
+    if (r.includes('heart') || r.includes('chest')) return 'Cardiologist';
+    if (r.includes('skin') || r.includes('rash')) return 'Dermatologist';
+    return 'General Practitioner';
+}
+
+app.post('/seed', (req, res) => {
+    referrals = [];
+    res.json({ message: 'Database seeded (cleared)' });
+});
+
 app.post('/orchestrate', async (req, res) => {
     try {
-        // const { documentId, referralData } = req.body;
-        res.status(200).json(MOCK_ORCHESTRATION_RESPONSE);
+        const { referralData } = req.body;
+
+        if (!referralData) {
+            return res.status(400).json({ success: false, error: 'Missing referralData' });
+        }
+
+        const {
+            patientFirstName,
+            patientLastName,
+            patientEmail,
+            age,
+            specialty: requestedSpecialty,
+            payer,
+            plan,
+            urgency,
+            appointmentDate,
+            referralDate,
+            providerName,
+            facilityName,
+            reason
+        } = referralData;
+
+        const specialty = requestedSpecialty || determineSpecialty(reason || '');
+        const specialist = specialists.find(s => s.specialty === specialty) || specialists[0];
+
+        const newReferral = {
+            id: `ref-${Date.now()}`,
+            patientFirstName,
+            patientLastName,
+            patientEmail,
+            age,
+            specialty,
+            payer,
+            plan,
+            urgency,
+            appointmentDate,
+            referralDate: referralDate || new Date().toISOString(),
+            providerName,
+            facilityName,
+            reason,
+            status: 'Pending',
+            noShowRisk: Math.floor(Math.random() * 50)
+        };
+
+        referrals.push(newReferral);
+
+        res.status(200).json({
+            success: true,
+            data: {
+                referralId: newReferral.id,
+                status: 'Processed',
+                orchestrationId: `orch-${Date.now()}`,
+                completedSteps: [],
+                appointmentDetails: {
+                    providerName: specialist.name,
+                    facilityName: 'Downtown Medical Center',
+                    facilityAddress: '123 Main St'
+                }
+            },
+            message: 'Referral orchestration completed successfully'
+        });
     } catch (error) {
         console.error('Orchestrate error:', error);
-        res.status(500).json({
-            success: false,
-            error: {
-                code: "ORCHESTRATION_FAILED",
-                message: "Failed to start orchestration",
-                statusCode: 500
-            }
-        });
+        res.status(500).json({ success: false, error: 'Orchestration failed' });
     }
 });
 
 app.get('/referrals', (req, res) => {
-    res.status(200).json(MOCK_REFERRALS_LIST);
+    res.status(200).json({
+        success: true,
+        data: {
+            referrals: referrals.sort((a, b) => new Date(b.referralDate).getTime() - new Date(a.referralDate).getTime()),
+            pagination: {
+                page: 1,
+                limit: 50,
+                total: referrals.length,
+                totalPages: 1,
+                hasNextPage: false,
+                hasPreviousPage: false
+            }
+        },
+        message: 'Referrals retrieved successfully'
+    });
 });
 
 app.get('/referral/:id', (req, res) => {
     const { id } = req.params;
-    if (id === 'ref-001') {
-        res.status(200).json(MOCK_REFERRAL_DETAILS);
+    const referral = referrals.find(r => r.id === id);
+
+    if (referral) {
+        res.status(200).json({ success: true, data: referral });
     } else {
         res.status(404).json({
             success: false,
@@ -87,18 +175,8 @@ app.get('/referral/:id', (req, res) => {
 
 app.get('/referral/:id/logs', (req, res) => {
     const { id } = req.params;
-    if (id === 'ref-001') {
-        res.status(200).json(MOCK_REFERRAL_LOGS);
-    } else {
-        res.status(404).json({
-            success: false,
-            error: {
-                code: "REFERRAL_NOT_FOUND",
-                message: `Referral with ID '${id}' not found`,
-                statusCode: 404
-            }
-        });
-    }
+    // Return mock logs for now
+    res.status(200).json(MOCK_REFERRAL_LOGS);
 });
 
 // ESM replacement for require.main === module

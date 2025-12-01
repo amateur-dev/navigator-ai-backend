@@ -129,21 +129,30 @@ app.post('/extract', async (c) => {
     }
 
     // Use SmartBucket's documentChat for AI extraction  
-    const extractionPrompt = `Extract patient information from this medical referral document.
+    const extractionPrompt = `Extract patient and referral information from this medical referral document.
 
 Return ONLY a JSON object with these exact fields:
 {
-  "patientName": "Full patient name (first and last)",
-  "dateOfBirth": "YYYY-MM-DD format", 
-  "referralReason": "Medical condition or symptoms",
-  "insuranceProvider": "Insurance company name"
+  "patientFirstName": "Patient's first name",
+  "patientLastName": "Patient's last name",
+  "patientEmail": "Patient's email address (if available, else null)",
+  "age": "Patient's age (number, if available, else null)",
+  "specialty": "Medical specialty for referral",
+  "payer": "Insurance payer name",
+  "plan": "Insurance plan name",
+  "urgency": "Urgency level (routine, urgent, or stat)",
+  "appointmentDate": "Appointment date if specified (YYYY-MM-DD, else null)",
+  "referralDate": "Date referral was created (YYYY-MM-DD)",
+  "providerName": "Referring provider's name",
+  "facilityName": "Facility/practice name",
+  "reason": "Reason for referral"
 }
 
 Instructions:
 - Read the document carefully
 - Extract EXACTLY what the document says
 - Convert dates to YYYY-MM-DD format
-- If a field is missing, use "Unknown"
+- If a field is missing, use null
 - Return ONLY valid JSON, no markdown or explanation`;
 
     const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
@@ -232,24 +241,41 @@ Instructions:
 app.post('/orchestrate', async (c) => {
   try {
     const body = await c.req.json();
-    const { patientName, referralReason, insuranceProvider } = body;
+    const { referralData } = body;
 
-    if (!patientName || !referralReason) {
+    if (!referralData || !referralData.patientFirstName || !referralData.reason) {
       return c.json({
         success: false,
         error: {
           code: "INVALID_REQUEST",
-          message: "Missing required fields",
+          message: "Missing required fields in referralData",
           statusCode: 400
         }
       }, 400);
     }
 
-        // 1. Determine Specialist based on condition (Expanded keyword matching)
-    const specialty = determineSpecialty(referralReason);
+    const {
+      patientFirstName,
+      patientLastName,
+      patientEmail,
+      age,
+      specialty: requestedSpecialty,
+      payer,
+      plan,
+      urgency,
+      appointmentDate,
+      referralDate,
+      providerName,
+      facilityName,
+      reason
+    } = referralData;
+
+    // 1. Determine Specialist based on condition (Expanded keyword matching)
+    // Use requested specialty if available, otherwise infer from reason
+    const specialty = requestedSpecialty || determineSpecialty(reason);
 
     // 2. Check Insurance (Mock logic)
-    const insuranceStatus = (insuranceProvider && insuranceProvider.toLowerCase().includes('blue')) ? 'Approved' : 'Pending Review';
+    const insuranceStatus = (payer && payer.toLowerCase().includes('blue')) ? 'Approved' : 'Pending Review';
 
     // 3. Find Available Slots from DB
     const db = c.env.REFERRALS_DB as any;
@@ -297,8 +323,20 @@ app.post('/orchestrate', async (c) => {
     }
 
     // 4. Create Referral Record in DB
-    const insertQuery = `INSERT INTO referrals (patient_name, condition, insurance_provider, specialist_id, status) 
-       VALUES ('${patientName}', '${referralReason}', '${insuranceProvider}', ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
+    // Calculate no-show risk (mock logic)
+    const noShowRisk = Math.floor(Math.random() * 30) + 10; // 10-40%
+
+    const insertQuery = `INSERT INTO referrals (
+      patient_first_name, patient_last_name, patient_email, age, 
+      specialty, payer, plan, urgency, 
+      appointment_date, referral_date, provider_name, facility_name, reason,
+      specialist_id, status, no_show_risk
+    ) VALUES (
+      '${patientFirstName}', '${patientLastName}', '${patientEmail || ''}', ${age || 'NULL'},
+      '${specialty}', '${payer || ''}', '${plan || ''}', '${urgency || 'routine'}',
+      '${appointmentDate || ''}', '${referralDate || new Date().toISOString()}', '${providerName || ''}', '${facilityName || ''}', '${reason.replace(/'/g, "''")}',
+      ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending', ${noShowRisk}
+    )`;
 
     await db.executeQuery({ sqlQuery: insertQuery });
 
@@ -312,15 +350,17 @@ app.post('/orchestrate', async (c) => {
       data: {
         referralId: `ref-${referralId}`,
         status: 'Processed',
-        specialist: specialty,
-        assignedDoctor: selectedSpecialist ? selectedSpecialist.name : 'Pending Assignment',
-        insuranceStatus,
-        availableSlots,
-        debug: {
-          specialtyUsed: specialty,
-          specialistsFound: specialists.length,
-          slotsFound: availableSlots.length
-        }
+        orchestrationId: `orch-${Date.now()}`,
+        completedSteps: [
+          { id: 'step-1', label: 'Intake', status: 'completed', completedAt: new Date().toISOString() }
+        ],
+        appointmentDetails: selectedSpecialist ? {
+          providerName: selectedSpecialist.name,
+          facilityName: 'Downtown Medical Center', // Mock
+          facilityAddress: '123 Main St, New York, NY 10001' // Mock
+        } : null,
+        notificationsSent: { sms: false, email: false },
+        estimatedCompletionTime: new Date(Date.now() + 86400000).toISOString()
       },
       message: 'Referral orchestration completed successfully'
     });
@@ -368,14 +408,24 @@ app.post('/seed', async (c) => {
       sqlQuery: `
       CREATE TABLE IF NOT EXISTS referrals (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          patient_name TEXT NOT NULL,
-          dob TEXT,
-          condition TEXT,
-          insurance_provider TEXT,
+          patient_first_name TEXT NOT NULL,
+          patient_last_name TEXT NOT NULL,
+          patient_email TEXT,
+          age INTEGER,
+          specialty TEXT,
+          payer TEXT,
+          plan TEXT,
+          urgency TEXT,
+          appointment_date TEXT,
+          referral_date TEXT,
+          provider_name TEXT,
+          facility_name TEXT,
+          reason TEXT,
           specialist_id INTEGER REFERENCES specialists(id),
           slot_id INTEGER REFERENCES slots(id),
           status TEXT DEFAULT 'Pending',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          no_show_risk INTEGER DEFAULT 0
       );
     `});
 
@@ -499,8 +549,102 @@ app.post('/seed', async (c) => {
 });
 
 // Get all referrals
-app.get('/referrals', (c) => {
-  return c.json(MOCK_REFERRALS_LIST);
+app.get('/referrals', async (c) => {
+  try {
+    const db = c.env.REFERRALS_DB as any;
+    const { page = '1', limit = '50', status, specialty, search } = c.req.query();
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build query
+    let query = 'SELECT * FROM referrals WHERE 1=1';
+
+    if (status) {
+      const statuses = status.split(',').map(s => `'${s.trim()}'`).join(',');
+      query += ` AND status IN (${statuses})`;
+    }
+
+    if (specialty) {
+      const specialties = specialty.split(',').map(s => `'${s.trim()}'`).join(',');
+      query += ` AND specialty IN (${specialties})`;
+    }
+
+    if (search) {
+      query += ` AND (patient_first_name LIKE '%${search}%' OR patient_last_name LIKE '%${search}%' OR patient_email LIKE '%${search}%')`;
+    }
+
+    // Get total count
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as total');
+    const countResult = await db.executeQuery({ sqlQuery: countQuery });
+
+    // Helper to extract rows
+    const getRows = (result: any) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === 'string') {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            console.error('Failed to parse SQL results:', e);
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+
+    const countRows = getRows(countResult);
+    const total = countRows[0]?.total || 0;
+
+    // Add pagination
+    query += ` ORDER BY created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
+
+    const result = await db.executeQuery({ sqlQuery: query });
+    const rows = getRows(result);
+
+    const referrals = rows.map((row: any) => ({
+      id: `ref-${row.id}`,
+      patientFirstName: row.patient_first_name,
+      patientLastName: row.patient_last_name,
+      patientEmail: row.patient_email,
+      specialty: row.specialty,
+      payer: row.payer,
+      status: row.status,
+      appointmentDate: row.appointment_date,
+      referralDate: row.referral_date,
+      noShowRisk: row.no_show_risk
+    }));
+
+    return c.json({
+      success: true,
+      data: {
+        referrals,
+        pagination: {
+          page: pageNum,
+          limit: limitNum,
+          total,
+          totalPages: Math.ceil(total / limitNum),
+          hasNextPage: pageNum * limitNum < total,
+          hasPreviousPage: pageNum > 1
+        }
+      },
+      message: 'Referrals retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Get referrals error:', error);
+    return c.json({
+      success: false,
+      error: {
+        code: "DB_ERROR",
+        message: "Failed to retrieve referrals: " + (error instanceof Error ? error.message : String(error)),
+        statusCode: 500
+      }
+    }, 500);
+  }
 });
 
 // Get referral details

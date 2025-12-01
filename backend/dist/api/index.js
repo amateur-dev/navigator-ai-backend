@@ -1,2252 +1,328 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "aa0ca8d1700dc91d98794600bccee9215d41f833"; 
-
-// node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
-var matchOrigin = (request, env, config) => {
-  const requestOrigin = request.headers.get("origin");
-  if (!requestOrigin) {
-    return null;
-  }
-  const { origin } = config;
-  if (origin === "*") {
-    return "*";
-  }
-  if (typeof origin === "function") {
-    return origin(request, env);
-  }
-  if (typeof origin === "string") {
-    return requestOrigin === origin ? origin : null;
-  }
-  if (Array.isArray(origin)) {
-    return origin.includes(requestOrigin) ? requestOrigin : null;
-  }
-  return null;
-};
-var addCorsHeaders = (response, request, env, config) => {
-  const allowedOrigin = matchOrigin(request, env, config);
-  if (!allowedOrigin) {
-    return response;
-  }
-  const headers = new Headers(response.headers);
-  headers.set("Access-Control-Allow-Origin", allowedOrigin);
-  if (config.credentials) {
-    headers.set("Access-Control-Allow-Credentials", "true");
-  }
-  if (config.exposeHeaders && config.exposeHeaders.length > 0) {
-    headers.set("Access-Control-Expose-Headers", config.exposeHeaders.join(", "));
-  }
-  const vary = headers.get("Vary");
-  if (vary) {
-    if (!vary.includes("Origin")) {
-      headers.set("Vary", `${vary}, Origin`);
+import { Service } from '@liquidmetal-ai/raindrop-framework';
+import { Hono } from 'hono';
+import { logger } from 'hono/logger';
+import { MOCK_REFERRAL_DETAILS, MOCK_REFERRAL_LOGS } from './mockData';
+// Exported for testing/mocking
+export function determineSpecialty(referralReason) {
+    let specialty = 'General Practitioner';
+    const reasonLower = referralReason.toLowerCase();
+    const specialtyMap = {
+        'Cardiologist': ['heart', 'cardio', 'chest', 'palpitation', 'pulse', 'pressure'],
+        'Dermatologist': ['skin', 'derma', 'rash', 'itch', 'acne', 'mole', 'lesion', 'nevus'],
+        'Orthopedist': ['bone', 'joint', 'knee', 'back', 'spine', 'fracture', 'ortho', 'shoulder', 'hip'],
+        'Neurologist': ['headache', 'migraine', 'seizure', 'numbness', 'dizzy', 'brain', 'nerve', 'neuro'],
+        'Pediatrician': ['child', 'baby', 'infant', 'toddler', 'pediatric', 'growth', 'allergy'],
+        'Psychiatrist': ['mental', 'depress', 'anxiety', 'mood', 'psych', 'behavior'],
+        'Oncologist': ['cancer', 'tumor', 'lump', 'onco', 'chemo', 'radiation', 'mammogram', 'breast', 'bi-rads'],
+        'Gastroenterologist': ['stomach', 'gut', 'digest', 'bowel', 'reflux', 'gastro', 'liver', 'anemia'],
+        'Pulmonologist': ['lung', 'breath', 'cough', 'pulmo', 'respiratory', 'asthma'],
+        'Urologist': ['urine', 'bladder', 'kidney', 'prostate', 'uro'],
+        'Ophthalmologist': ['eye', 'vision', 'sight', 'blind', 'optic'],
+        'ENT Specialist': ['ear', 'nose', 'throat', 'sinus', 'hearing'],
+        'Endocrinologist': ['diabetes', 'thyroid', 'hormone', 'sugar', 'endo'],
+        'Rheumatologist': ['arthritis', 'autoimmune', 'lupus', 'rheum'],
+    };
+    for (const [spec, keywords] of Object.entries(specialtyMap)) {
+        if (keywords.some(k => reasonLower.includes(k))) {
+            specialty = spec;
+            break;
+        }
     }
-  } else {
-    headers.set("Vary", "Origin");
-  }
-  return new Response(response.body, {
-    status: response.status,
-    statusText: response.statusText,
-    headers
-  });
-};
-var handlePreflight = (request, env, config) => {
-  const allowedOrigin = matchOrigin(request, env, config);
-  if (!allowedOrigin) {
-    return new Response(null, { status: 403 });
-  }
-  const headers = new Headers();
-  headers.set("Access-Control-Allow-Origin", allowedOrigin);
-  if (config.credentials) {
-    headers.set("Access-Control-Allow-Credentials", "true");
-  }
-  const allowMethods = config.allowMethods || ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"];
-  headers.set("Access-Control-Allow-Methods", allowMethods.join(", "));
-  const allowHeaders = config.allowHeaders || ["Content-Type", "Authorization"];
-  headers.set("Access-Control-Allow-Headers", allowHeaders.join(", "));
-  const maxAge = config.maxAge ?? 86400;
-  headers.set("Access-Control-Max-Age", maxAge.toString());
-  headers.set("Vary", "Origin");
-  return new Response(null, {
-    status: 204,
-    headers
-  });
-};
-var createCorsHandler = (config) => {
-  return (request, env, response) => {
-    if (!response) {
-      return handlePreflight(request, env, config);
-    }
-    return addCorsHeaders(response, request, env, config);
-  };
-};
-var corsAllowAll = createCorsHandler({
-  origin: "*",
-  allowMethods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowHeaders: ["Content-Type", "Authorization"],
-  credentials: true
+    return specialty;
+}
+// Create Hono app with middleware
+const app = new Hono();
+// Add request logging middleware
+app.use('*', logger());
+// Health check endpoint
+app.get('/health', (c) => {
+    return c.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
-var corsDisabled = (request, _env, response) => {
-  if (!response && request.method === "OPTIONS") {
-    return new Response(null, { status: 403 });
-  }
-  if (!response) {
-    throw new Error("corsDisabled called without response for non-OPTIONS request");
-  }
-  return response;
-};
-
-// src/_app/cors.ts
-var cors = corsDisabled;
-
-// src/api/index.ts
-import { Service } from "./runtime.js";
-
-// node_modules/hono/dist/compose.js
-var compose = (middleware, onError, onNotFound) => {
-  return (context, next) => {
-    let index = -1;
-    return dispatch(0);
-    async function dispatch(i) {
-      if (i <= index) {
-        throw new Error("next() called multiple times");
-      }
-      index = i;
-      let res;
-      let isError = false;
-      let handler;
-      if (middleware[i]) {
-        handler = middleware[i][0][0];
-        context.req.routeIndex = i;
-      } else {
-        handler = i === middleware.length && next || void 0;
-      }
-      if (handler) {
-        try {
-          res = await handler(context, () => dispatch(i + 1));
-        } catch (err) {
-          if (err instanceof Error && onError) {
-            context.error = err;
-            res = await onError(err, context);
-            isError = true;
-          } else {
-            throw err;
-          }
-        }
-      } else {
-        if (context.finalized === false && onNotFound) {
-          res = await onNotFound(context);
-        }
-      }
-      if (res && (context.finalized === false || isError)) {
-        context.res = res;
-      }
-      return context;
-    }
-  };
-};
-
-// node_modules/hono/dist/request/constants.js
-var GET_MATCH_RESULT = Symbol();
-
-// node_modules/hono/dist/utils/body.js
-var parseBody = async (request, options = /* @__PURE__ */ Object.create(null)) => {
-  const { all = false, dot = false } = options;
-  const headers = request instanceof HonoRequest ? request.raw.headers : request.headers;
-  const contentType = headers.get("Content-Type");
-  if (contentType?.startsWith("multipart/form-data") || contentType?.startsWith("application/x-www-form-urlencoded")) {
-    return parseFormData(request, { all, dot });
-  }
-  return {};
-};
-async function parseFormData(request, options) {
-  const formData = await request.formData();
-  if (formData) {
-    return convertFormDataToBodyData(formData, options);
-  }
-  return {};
-}
-function convertFormDataToBodyData(formData, options) {
-  const form = /* @__PURE__ */ Object.create(null);
-  formData.forEach((value, key) => {
-    const shouldParseAllValues = options.all || key.endsWith("[]");
-    if (!shouldParseAllValues) {
-      form[key] = value;
-    } else {
-      handleParsingAllValues(form, key, value);
-    }
-  });
-  if (options.dot) {
-    Object.entries(form).forEach(([key, value]) => {
-      const shouldParseDotValues = key.includes(".");
-      if (shouldParseDotValues) {
-        handleParsingNestedValues(form, key, value);
-        delete form[key];
-      }
-    });
-  }
-  return form;
-}
-var handleParsingAllValues = (form, key, value) => {
-  if (form[key] !== void 0) {
-    if (Array.isArray(form[key])) {
-      ;
-      form[key].push(value);
-    } else {
-      form[key] = [form[key], value];
-    }
-  } else {
-    if (!key.endsWith("[]")) {
-      form[key] = value;
-    } else {
-      form[key] = [value];
-    }
-  }
-};
-var handleParsingNestedValues = (form, key, value) => {
-  let nestedForm = form;
-  const keys = key.split(".");
-  keys.forEach((key2, index) => {
-    if (index === keys.length - 1) {
-      nestedForm[key2] = value;
-    } else {
-      if (!nestedForm[key2] || typeof nestedForm[key2] !== "object" || Array.isArray(nestedForm[key2]) || nestedForm[key2] instanceof File) {
-        nestedForm[key2] = /* @__PURE__ */ Object.create(null);
-      }
-      nestedForm = nestedForm[key2];
-    }
-  });
-};
-
-// node_modules/hono/dist/utils/url.js
-var splitPath = (path) => {
-  const paths = path.split("/");
-  if (paths[0] === "") {
-    paths.shift();
-  }
-  return paths;
-};
-var splitRoutingPath = (routePath) => {
-  const { groups, path } = extractGroupsFromPath(routePath);
-  const paths = splitPath(path);
-  return replaceGroupMarks(paths, groups);
-};
-var extractGroupsFromPath = (path) => {
-  const groups = [];
-  path = path.replace(/\{[^}]+\}/g, (match2, index) => {
-    const mark = `@${index}`;
-    groups.push([mark, match2]);
-    return mark;
-  });
-  return { groups, path };
-};
-var replaceGroupMarks = (paths, groups) => {
-  for (let i = groups.length - 1; i >= 0; i--) {
-    const [mark] = groups[i];
-    for (let j = paths.length - 1; j >= 0; j--) {
-      if (paths[j].includes(mark)) {
-        paths[j] = paths[j].replace(mark, groups[i][1]);
-        break;
-      }
-    }
-  }
-  return paths;
-};
-var patternCache = {};
-var getPattern = (label, next) => {
-  if (label === "*") {
-    return "*";
-  }
-  const match2 = label.match(/^\:([^\{\}]+)(?:\{(.+)\})?$/);
-  if (match2) {
-    const cacheKey = `${label}#${next}`;
-    if (!patternCache[cacheKey]) {
-      if (match2[2]) {
-        patternCache[cacheKey] = next && next[0] !== ":" && next[0] !== "*" ? [cacheKey, match2[1], new RegExp(`^${match2[2]}(?=/${next})`)] : [label, match2[1], new RegExp(`^${match2[2]}$`)];
-      } else {
-        patternCache[cacheKey] = [label, match2[1], true];
-      }
-    }
-    return patternCache[cacheKey];
-  }
-  return null;
-};
-var tryDecode = (str, decoder) => {
-  try {
-    return decoder(str);
-  } catch {
-    return str.replace(/(?:%[0-9A-Fa-f]{2})+/g, (match2) => {
-      try {
-        return decoder(match2);
-      } catch {
-        return match2;
-      }
-    });
-  }
-};
-var tryDecodeURI = (str) => tryDecode(str, decodeURI);
-var getPath = (request) => {
-  const url = request.url;
-  const start = url.indexOf("/", url.indexOf(":") + 4);
-  let i = start;
-  for (; i < url.length; i++) {
-    const charCode = url.charCodeAt(i);
-    if (charCode === 37) {
-      const queryIndex = url.indexOf("?", i);
-      const path = url.slice(start, queryIndex === -1 ? void 0 : queryIndex);
-      return tryDecodeURI(path.includes("%25") ? path.replace(/%25/g, "%2525") : path);
-    } else if (charCode === 63) {
-      break;
-    }
-  }
-  return url.slice(start, i);
-};
-var getPathNoStrict = (request) => {
-  const result = getPath(request);
-  return result.length > 1 && result.at(-1) === "/" ? result.slice(0, -1) : result;
-};
-var mergePath = (base, sub, ...rest) => {
-  if (rest.length) {
-    sub = mergePath(sub, ...rest);
-  }
-  return `${base?.[0] === "/" ? "" : "/"}${base}${sub === "/" ? "" : `${base?.at(-1) === "/" ? "" : "/"}${sub?.[0] === "/" ? sub.slice(1) : sub}`}`;
-};
-var checkOptionalParameter = (path) => {
-  if (path.charCodeAt(path.length - 1) !== 63 || !path.includes(":")) {
-    return null;
-  }
-  const segments = path.split("/");
-  const results = [];
-  let basePath = "";
-  segments.forEach((segment) => {
-    if (segment !== "" && !/\:/.test(segment)) {
-      basePath += "/" + segment;
-    } else if (/\:/.test(segment)) {
-      if (/\?/.test(segment)) {
-        if (results.length === 0 && basePath === "") {
-          results.push("/");
-        } else {
-          results.push(basePath);
-        }
-        const optionalSegment = segment.replace("?", "");
-        basePath += "/" + optionalSegment;
-        results.push(basePath);
-      } else {
-        basePath += "/" + segment;
-      }
-    }
-  });
-  return results.filter((v, i, a) => a.indexOf(v) === i);
-};
-var _decodeURI = (value) => {
-  if (!/[%+]/.test(value)) {
-    return value;
-  }
-  if (value.indexOf("+") !== -1) {
-    value = value.replace(/\+/g, " ");
-  }
-  return value.indexOf("%") !== -1 ? tryDecode(value, decodeURIComponent_) : value;
-};
-var _getQueryParam = (url, key, multiple) => {
-  let encoded;
-  if (!multiple && key && !/[%+]/.test(key)) {
-    let keyIndex2 = url.indexOf("?", 8);
-    if (keyIndex2 === -1) {
-      return void 0;
-    }
-    if (!url.startsWith(key, keyIndex2 + 1)) {
-      keyIndex2 = url.indexOf(`&${key}`, keyIndex2 + 1);
-    }
-    while (keyIndex2 !== -1) {
-      const trailingKeyCode = url.charCodeAt(keyIndex2 + key.length + 1);
-      if (trailingKeyCode === 61) {
-        const valueIndex = keyIndex2 + key.length + 2;
-        const endIndex = url.indexOf("&", valueIndex);
-        return _decodeURI(url.slice(valueIndex, endIndex === -1 ? void 0 : endIndex));
-      } else if (trailingKeyCode == 38 || isNaN(trailingKeyCode)) {
-        return "";
-      }
-      keyIndex2 = url.indexOf(`&${key}`, keyIndex2 + 1);
-    }
-    encoded = /[%+]/.test(url);
-    if (!encoded) {
-      return void 0;
-    }
-  }
-  const results = {};
-  encoded ??= /[%+]/.test(url);
-  let keyIndex = url.indexOf("?", 8);
-  while (keyIndex !== -1) {
-    const nextKeyIndex = url.indexOf("&", keyIndex + 1);
-    let valueIndex = url.indexOf("=", keyIndex);
-    if (valueIndex > nextKeyIndex && nextKeyIndex !== -1) {
-      valueIndex = -1;
-    }
-    let name = url.slice(
-      keyIndex + 1,
-      valueIndex === -1 ? nextKeyIndex === -1 ? void 0 : nextKeyIndex : valueIndex
-    );
-    if (encoded) {
-      name = _decodeURI(name);
-    }
-    keyIndex = nextKeyIndex;
-    if (name === "") {
-      continue;
-    }
-    let value;
-    if (valueIndex === -1) {
-      value = "";
-    } else {
-      value = url.slice(valueIndex + 1, nextKeyIndex === -1 ? void 0 : nextKeyIndex);
-      if (encoded) {
-        value = _decodeURI(value);
-      }
-    }
-    if (multiple) {
-      if (!(results[name] && Array.isArray(results[name]))) {
-        results[name] = [];
-      }
-      ;
-      results[name].push(value);
-    } else {
-      results[name] ??= value;
-    }
-  }
-  return key ? results[key] : results;
-};
-var getQueryParam = _getQueryParam;
-var getQueryParams = (url, key) => {
-  return _getQueryParam(url, key, true);
-};
-var decodeURIComponent_ = decodeURIComponent;
-
-// node_modules/hono/dist/request.js
-var tryDecodeURIComponent = (str) => tryDecode(str, decodeURIComponent_);
-var HonoRequest = class {
-  raw;
-  #validatedData;
-  #matchResult;
-  routeIndex = 0;
-  path;
-  bodyCache = {};
-  constructor(request, path = "/", matchResult = [[]]) {
-    this.raw = request;
-    this.path = path;
-    this.#matchResult = matchResult;
-    this.#validatedData = {};
-  }
-  param(key) {
-    return key ? this.#getDecodedParam(key) : this.#getAllDecodedParams();
-  }
-  #getDecodedParam(key) {
-    const paramKey = this.#matchResult[0][this.routeIndex][1][key];
-    const param = this.#getParamValue(paramKey);
-    return param && /\%/.test(param) ? tryDecodeURIComponent(param) : param;
-  }
-  #getAllDecodedParams() {
-    const decoded = {};
-    const keys = Object.keys(this.#matchResult[0][this.routeIndex][1]);
-    for (const key of keys) {
-      const value = this.#getParamValue(this.#matchResult[0][this.routeIndex][1][key]);
-      if (value !== void 0) {
-        decoded[key] = /\%/.test(value) ? tryDecodeURIComponent(value) : value;
-      }
-    }
-    return decoded;
-  }
-  #getParamValue(paramKey) {
-    return this.#matchResult[1] ? this.#matchResult[1][paramKey] : paramKey;
-  }
-  query(key) {
-    return getQueryParam(this.url, key);
-  }
-  queries(key) {
-    return getQueryParams(this.url, key);
-  }
-  header(name) {
-    if (name) {
-      return this.raw.headers.get(name) ?? void 0;
-    }
-    const headerData = {};
-    this.raw.headers.forEach((value, key) => {
-      headerData[key] = value;
-    });
-    return headerData;
-  }
-  async parseBody(options) {
-    return this.bodyCache.parsedBody ??= await parseBody(this, options);
-  }
-  #cachedBody = (key) => {
-    const { bodyCache, raw: raw2 } = this;
-    const cachedBody = bodyCache[key];
-    if (cachedBody) {
-      return cachedBody;
-    }
-    const anyCachedKey = Object.keys(bodyCache)[0];
-    if (anyCachedKey) {
-      return bodyCache[anyCachedKey].then((body) => {
-        if (anyCachedKey === "json") {
-          body = JSON.stringify(body);
-        }
-        return new Response(body)[key]();
-      });
-    }
-    return bodyCache[key] = raw2[key]();
-  };
-  json() {
-    return this.#cachedBody("text").then((text) => JSON.parse(text));
-  }
-  text() {
-    return this.#cachedBody("text");
-  }
-  arrayBuffer() {
-    return this.#cachedBody("arrayBuffer");
-  }
-  blob() {
-    return this.#cachedBody("blob");
-  }
-  formData() {
-    return this.#cachedBody("formData");
-  }
-  addValidatedData(target, data) {
-    this.#validatedData[target] = data;
-  }
-  valid(target) {
-    return this.#validatedData[target];
-  }
-  get url() {
-    return this.raw.url;
-  }
-  get method() {
-    return this.raw.method;
-  }
-  get [GET_MATCH_RESULT]() {
-    return this.#matchResult;
-  }
-  get matchedRoutes() {
-    return this.#matchResult[0].map(([[, route]]) => route);
-  }
-  get routePath() {
-    return this.#matchResult[0].map(([[, route]]) => route)[this.routeIndex].path;
-  }
-};
-
-// node_modules/hono/dist/utils/html.js
-var HtmlEscapedCallbackPhase = {
-  Stringify: 1,
-  BeforeStream: 2,
-  Stream: 3
-};
-var raw = (value, callbacks) => {
-  const escapedString = new String(value);
-  escapedString.isEscaped = true;
-  escapedString.callbacks = callbacks;
-  return escapedString;
-};
-var resolveCallback = async (str, phase, preserveCallbacks, context, buffer) => {
-  if (typeof str === "object" && !(str instanceof String)) {
-    if (!(str instanceof Promise)) {
-      str = str.toString();
-    }
-    if (str instanceof Promise) {
-      str = await str;
-    }
-  }
-  const callbacks = str.callbacks;
-  if (!callbacks?.length) {
-    return Promise.resolve(str);
-  }
-  if (buffer) {
-    buffer[0] += str;
-  } else {
-    buffer = [str];
-  }
-  const resStr = Promise.all(callbacks.map((c) => c({ phase, buffer, context }))).then(
-    (res) => Promise.all(
-      res.filter(Boolean).map((str2) => resolveCallback(str2, phase, false, context, buffer))
-    ).then(() => buffer[0])
-  );
-  if (preserveCallbacks) {
-    return raw(await resStr, callbacks);
-  } else {
-    return resStr;
-  }
-};
-
-// node_modules/hono/dist/context.js
-var TEXT_PLAIN = "text/plain; charset=UTF-8";
-var setDefaultContentType = (contentType, headers) => {
-  return {
-    "Content-Type": contentType,
-    ...headers
-  };
-};
-var Context = class {
-  #rawRequest;
-  #req;
-  env = {};
-  #var;
-  finalized = false;
-  error;
-  #status;
-  #executionCtx;
-  #res;
-  #layout;
-  #renderer;
-  #notFoundHandler;
-  #preparedHeaders;
-  #matchResult;
-  #path;
-  constructor(req, options) {
-    this.#rawRequest = req;
-    if (options) {
-      this.#executionCtx = options.executionCtx;
-      this.env = options.env;
-      this.#notFoundHandler = options.notFoundHandler;
-      this.#path = options.path;
-      this.#matchResult = options.matchResult;
-    }
-  }
-  get req() {
-    this.#req ??= new HonoRequest(this.#rawRequest, this.#path, this.#matchResult);
-    return this.#req;
-  }
-  get event() {
-    if (this.#executionCtx && "respondWith" in this.#executionCtx) {
-      return this.#executionCtx;
-    } else {
-      throw Error("This context has no FetchEvent");
-    }
-  }
-  get executionCtx() {
-    if (this.#executionCtx) {
-      return this.#executionCtx;
-    } else {
-      throw Error("This context has no ExecutionContext");
-    }
-  }
-  get res() {
-    return this.#res ||= new Response(null, {
-      headers: this.#preparedHeaders ??= new Headers()
-    });
-  }
-  set res(_res) {
-    if (this.#res && _res) {
-      _res = new Response(_res.body, _res);
-      for (const [k, v] of this.#res.headers.entries()) {
-        if (k === "content-type") {
-          continue;
-        }
-        if (k === "set-cookie") {
-          const cookies = this.#res.headers.getSetCookie();
-          _res.headers.delete("set-cookie");
-          for (const cookie of cookies) {
-            _res.headers.append("set-cookie", cookie);
-          }
-        } else {
-          _res.headers.set(k, v);
-        }
-      }
-    }
-    this.#res = _res;
-    this.finalized = true;
-  }
-  render = (...args) => {
-    this.#renderer ??= (content) => this.html(content);
-    return this.#renderer(...args);
-  };
-  setLayout = (layout) => this.#layout = layout;
-  getLayout = () => this.#layout;
-  setRenderer = (renderer) => {
-    this.#renderer = renderer;
-  };
-  header = (name, value, options) => {
-    if (this.finalized) {
-      this.#res = new Response(this.#res.body, this.#res);
-    }
-    const headers = this.#res ? this.#res.headers : this.#preparedHeaders ??= new Headers();
-    if (value === void 0) {
-      headers.delete(name);
-    } else if (options?.append) {
-      headers.append(name, value);
-    } else {
-      headers.set(name, value);
-    }
-  };
-  status = (status) => {
-    this.#status = status;
-  };
-  set = (key, value) => {
-    this.#var ??= /* @__PURE__ */ new Map();
-    this.#var.set(key, value);
-  };
-  get = (key) => {
-    return this.#var ? this.#var.get(key) : void 0;
-  };
-  get var() {
-    if (!this.#var) {
-      return {};
-    }
-    return Object.fromEntries(this.#var);
-  }
-  #newResponse(data, arg, headers) {
-    const responseHeaders = this.#res ? new Headers(this.#res.headers) : this.#preparedHeaders ?? new Headers();
-    if (typeof arg === "object" && "headers" in arg) {
-      const argHeaders = arg.headers instanceof Headers ? arg.headers : new Headers(arg.headers);
-      for (const [key, value] of argHeaders) {
-        if (key.toLowerCase() === "set-cookie") {
-          responseHeaders.append(key, value);
-        } else {
-          responseHeaders.set(key, value);
-        }
-      }
-    }
-    if (headers) {
-      for (const [k, v] of Object.entries(headers)) {
-        if (typeof v === "string") {
-          responseHeaders.set(k, v);
-        } else {
-          responseHeaders.delete(k);
-          for (const v2 of v) {
-            responseHeaders.append(k, v2);
-          }
-        }
-      }
-    }
-    const status = typeof arg === "number" ? arg : arg?.status ?? this.#status;
-    return new Response(data, { status, headers: responseHeaders });
-  }
-  newResponse = (...args) => this.#newResponse(...args);
-  body = (data, arg, headers) => this.#newResponse(data, arg, headers);
-  text = (text, arg, headers) => {
-    return !this.#preparedHeaders && !this.#status && !arg && !headers && !this.finalized ? new Response(text) : this.#newResponse(
-      text,
-      arg,
-      setDefaultContentType(TEXT_PLAIN, headers)
-    );
-  };
-  json = (object, arg, headers) => {
-    return this.#newResponse(
-      JSON.stringify(object),
-      arg,
-      setDefaultContentType("application/json", headers)
-    );
-  };
-  html = (html, arg, headers) => {
-    const res = (html2) => this.#newResponse(html2, arg, setDefaultContentType("text/html; charset=UTF-8", headers));
-    return typeof html === "object" ? resolveCallback(html, HtmlEscapedCallbackPhase.Stringify, false, {}).then(res) : res(html);
-  };
-  redirect = (location, status) => {
-    const locationString = String(location);
-    this.header(
-      "Location",
-      !/[^\x00-\xFF]/.test(locationString) ? locationString : encodeURI(locationString)
-    );
-    return this.newResponse(null, status ?? 302);
-  };
-  notFound = () => {
-    this.#notFoundHandler ??= () => new Response();
-    return this.#notFoundHandler(this);
-  };
-};
-
-// node_modules/hono/dist/router.js
-var METHOD_NAME_ALL = "ALL";
-var METHOD_NAME_ALL_LOWERCASE = "all";
-var METHODS = ["get", "post", "put", "delete", "options", "patch"];
-var MESSAGE_MATCHER_IS_ALREADY_BUILT = "Can not add a route since the matcher is already built.";
-var UnsupportedPathError = class extends Error {
-};
-
-// node_modules/hono/dist/utils/constants.js
-var COMPOSED_HANDLER = "__COMPOSED_HANDLER";
-
-// node_modules/hono/dist/hono-base.js
-var notFoundHandler = (c) => {
-  return c.text("404 Not Found", 404);
-};
-var errorHandler = (err, c) => {
-  if ("getResponse" in err) {
-    const res = err.getResponse();
-    return c.newResponse(res.body, res);
-  }
-  console.error(err);
-  return c.text("Internal Server Error", 500);
-};
-var Hono = class {
-  get;
-  post;
-  put;
-  delete;
-  options;
-  patch;
-  all;
-  on;
-  use;
-  router;
-  getPath;
-  _basePath = "/";
-  #path = "/";
-  routes = [];
-  constructor(options = {}) {
-    const allMethods = [...METHODS, METHOD_NAME_ALL_LOWERCASE];
-    allMethods.forEach((method) => {
-      this[method] = (args1, ...args) => {
-        if (typeof args1 === "string") {
-          this.#path = args1;
-        } else {
-          this.#addRoute(method, this.#path, args1);
-        }
-        args.forEach((handler) => {
-          this.#addRoute(method, this.#path, handler);
-        });
-        return this;
-      };
-    });
-    this.on = (method, path, ...handlers) => {
-      for (const p of [path].flat()) {
-        this.#path = p;
-        for (const m of [method].flat()) {
-          handlers.map((handler) => {
-            this.#addRoute(m.toUpperCase(), this.#path, handler);
-          });
-        }
-      }
-      return this;
-    };
-    this.use = (arg1, ...handlers) => {
-      if (typeof arg1 === "string") {
-        this.#path = arg1;
-      } else {
-        this.#path = "*";
-        handlers.unshift(arg1);
-      }
-      handlers.forEach((handler) => {
-        this.#addRoute(METHOD_NAME_ALL, this.#path, handler);
-      });
-      return this;
-    };
-    const { strict, ...optionsWithoutStrict } = options;
-    Object.assign(this, optionsWithoutStrict);
-    this.getPath = strict ?? true ? options.getPath ?? getPath : getPathNoStrict;
-  }
-  #clone() {
-    const clone = new Hono({
-      router: this.router,
-      getPath: this.getPath
-    });
-    clone.errorHandler = this.errorHandler;
-    clone.#notFoundHandler = this.#notFoundHandler;
-    clone.routes = this.routes;
-    return clone;
-  }
-  #notFoundHandler = notFoundHandler;
-  errorHandler = errorHandler;
-  route(path, app2) {
-    const subApp = this.basePath(path);
-    app2.routes.map((r) => {
-      let handler;
-      if (app2.errorHandler === errorHandler) {
-        handler = r.handler;
-      } else {
-        handler = async (c, next) => (await compose([], app2.errorHandler)(c, () => r.handler(c, next))).res;
-        handler[COMPOSED_HANDLER] = r.handler;
-      }
-      subApp.#addRoute(r.method, r.path, handler);
-    });
-    return this;
-  }
-  basePath(path) {
-    const subApp = this.#clone();
-    subApp._basePath = mergePath(this._basePath, path);
-    return subApp;
-  }
-  onError = (handler) => {
-    this.errorHandler = handler;
-    return this;
-  };
-  notFound = (handler) => {
-    this.#notFoundHandler = handler;
-    return this;
-  };
-  mount(path, applicationHandler, options) {
-    let replaceRequest;
-    let optionHandler;
-    if (options) {
-      if (typeof options === "function") {
-        optionHandler = options;
-      } else {
-        optionHandler = options.optionHandler;
-        if (options.replaceRequest === false) {
-          replaceRequest = (request) => request;
-        } else {
-          replaceRequest = options.replaceRequest;
-        }
-      }
-    }
-    const getOptions = optionHandler ? (c) => {
-      const options2 = optionHandler(c);
-      return Array.isArray(options2) ? options2 : [options2];
-    } : (c) => {
-      let executionContext = void 0;
-      try {
-        executionContext = c.executionCtx;
-      } catch {
-      }
-      return [c.env, executionContext];
-    };
-    replaceRequest ||= (() => {
-      const mergedPath = mergePath(this._basePath, path);
-      const pathPrefixLength = mergedPath === "/" ? 0 : mergedPath.length;
-      return (request) => {
-        const url = new URL(request.url);
-        url.pathname = url.pathname.slice(pathPrefixLength) || "/";
-        return new Request(url, request);
-      };
-    })();
-    const handler = async (c, next) => {
-      const res = await applicationHandler(replaceRequest(c.req.raw), ...getOptions(c));
-      if (res) {
-        return res;
-      }
-      await next();
-    };
-    this.#addRoute(METHOD_NAME_ALL, mergePath(path, "*"), handler);
-    return this;
-  }
-  #addRoute(method, path, handler) {
-    method = method.toUpperCase();
-    path = mergePath(this._basePath, path);
-    const r = { basePath: this._basePath, path, method, handler };
-    this.router.add(method, path, [handler, r]);
-    this.routes.push(r);
-  }
-  #handleError(err, c) {
-    if (err instanceof Error) {
-      return this.errorHandler(err, c);
-    }
-    throw err;
-  }
-  #dispatch(request, executionCtx, env, method) {
-    if (method === "HEAD") {
-      return (async () => new Response(null, await this.#dispatch(request, executionCtx, env, "GET")))();
-    }
-    const path = this.getPath(request, { env });
-    const matchResult = this.router.match(method, path);
-    const c = new Context(request, {
-      path,
-      matchResult,
-      env,
-      executionCtx,
-      notFoundHandler: this.#notFoundHandler
-    });
-    if (matchResult[0].length === 1) {
-      let res;
-      try {
-        res = matchResult[0][0][0][0](c, async () => {
-          c.res = await this.#notFoundHandler(c);
-        });
-      } catch (err) {
-        return this.#handleError(err, c);
-      }
-      return res instanceof Promise ? res.then(
-        (resolved) => resolved || (c.finalized ? c.res : this.#notFoundHandler(c))
-      ).catch((err) => this.#handleError(err, c)) : res ?? this.#notFoundHandler(c);
-    }
-    const composed = compose(matchResult[0], this.errorHandler, this.#notFoundHandler);
-    return (async () => {
-      try {
-        const context = await composed(c);
-        if (!context.finalized) {
-          throw new Error(
-            "Context is not finalized. Did you forget to return a Response object or `await next()`?"
-          );
-        }
-        return context.res;
-      } catch (err) {
-        return this.#handleError(err, c);
-      }
-    })();
-  }
-  fetch = (request, ...rest) => {
-    return this.#dispatch(request, rest[1], rest[0], request.method);
-  };
-  request = (input, requestInit, Env, executionCtx) => {
-    if (input instanceof Request) {
-      return this.fetch(requestInit ? new Request(input, requestInit) : input, Env, executionCtx);
-    }
-    input = input.toString();
-    return this.fetch(
-      new Request(
-        /^https?:\/\//.test(input) ? input : `http://localhost${mergePath("/", input)}`,
-        requestInit
-      ),
-      Env,
-      executionCtx
-    );
-  };
-  fire = () => {
-    addEventListener("fetch", (event) => {
-      event.respondWith(this.#dispatch(event.request, event, void 0, event.request.method));
-    });
-  };
-};
-
-// node_modules/hono/dist/router/reg-exp-router/matcher.js
-var emptyParam = [];
-function match(method, path) {
-  const matchers = this.buildAllMatchers();
-  const match2 = (method2, path2) => {
-    const matcher = matchers[method2] || matchers[METHOD_NAME_ALL];
-    const staticMatch = matcher[2][path2];
-    if (staticMatch) {
-      return staticMatch;
-    }
-    const match3 = path2.match(matcher[0]);
-    if (!match3) {
-      return [[], emptyParam];
-    }
-    const index = match3.indexOf("", 1);
-    return [matcher[1][index], match3];
-  };
-  this.match = match2;
-  return match2(method, path);
-}
-
-// node_modules/hono/dist/router/reg-exp-router/node.js
-var LABEL_REG_EXP_STR = "[^/]+";
-var ONLY_WILDCARD_REG_EXP_STR = ".*";
-var TAIL_WILDCARD_REG_EXP_STR = "(?:|/.*)";
-var PATH_ERROR = Symbol();
-var regExpMetaChars = new Set(".\\+*[^]$()");
-function compareKey(a, b) {
-  if (a.length === 1) {
-    return b.length === 1 ? a < b ? -1 : 1 : -1;
-  }
-  if (b.length === 1) {
-    return 1;
-  }
-  if (a === ONLY_WILDCARD_REG_EXP_STR || a === TAIL_WILDCARD_REG_EXP_STR) {
-    return 1;
-  } else if (b === ONLY_WILDCARD_REG_EXP_STR || b === TAIL_WILDCARD_REG_EXP_STR) {
-    return -1;
-  }
-  if (a === LABEL_REG_EXP_STR) {
-    return 1;
-  } else if (b === LABEL_REG_EXP_STR) {
-    return -1;
-  }
-  return a.length === b.length ? a < b ? -1 : 1 : b.length - a.length;
-}
-var Node = class {
-  #index;
-  #varIndex;
-  #children = /* @__PURE__ */ Object.create(null);
-  insert(tokens, index, paramMap, context, pathErrorCheckOnly) {
-    if (tokens.length === 0) {
-      if (this.#index !== void 0) {
-        throw PATH_ERROR;
-      }
-      if (pathErrorCheckOnly) {
-        return;
-      }
-      this.#index = index;
-      return;
-    }
-    const [token, ...restTokens] = tokens;
-    const pattern = token === "*" ? restTokens.length === 0 ? ["", "", ONLY_WILDCARD_REG_EXP_STR] : ["", "", LABEL_REG_EXP_STR] : token === "/*" ? ["", "", TAIL_WILDCARD_REG_EXP_STR] : token.match(/^\:([^\{\}]+)(?:\{(.+)\})?$/);
-    let node;
-    if (pattern) {
-      const name = pattern[1];
-      let regexpStr = pattern[2] || LABEL_REG_EXP_STR;
-      if (name && pattern[2]) {
-        if (regexpStr === ".*") {
-          throw PATH_ERROR;
-        }
-        regexpStr = regexpStr.replace(/^\((?!\?:)(?=[^)]+\)$)/, "(?:");
-        if (/\((?!\?:)/.test(regexpStr)) {
-          throw PATH_ERROR;
-        }
-      }
-      node = this.#children[regexpStr];
-      if (!node) {
-        if (Object.keys(this.#children).some(
-          (k) => k !== ONLY_WILDCARD_REG_EXP_STR && k !== TAIL_WILDCARD_REG_EXP_STR
-        )) {
-          throw PATH_ERROR;
-        }
-        if (pathErrorCheckOnly) {
-          return;
-        }
-        node = this.#children[regexpStr] = new Node();
-        if (name !== "") {
-          node.#varIndex = context.varIndex++;
-        }
-      }
-      if (!pathErrorCheckOnly && name !== "") {
-        paramMap.push([name, node.#varIndex]);
-      }
-    } else {
-      node = this.#children[token];
-      if (!node) {
-        if (Object.keys(this.#children).some(
-          (k) => k.length > 1 && k !== ONLY_WILDCARD_REG_EXP_STR && k !== TAIL_WILDCARD_REG_EXP_STR
-        )) {
-          throw PATH_ERROR;
-        }
-        if (pathErrorCheckOnly) {
-          return;
-        }
-        node = this.#children[token] = new Node();
-      }
-    }
-    node.insert(restTokens, index, paramMap, context, pathErrorCheckOnly);
-  }
-  buildRegExpStr() {
-    const childKeys = Object.keys(this.#children).sort(compareKey);
-    const strList = childKeys.map((k) => {
-      const c = this.#children[k];
-      return (typeof c.#varIndex === "number" ? `(${k})@${c.#varIndex}` : regExpMetaChars.has(k) ? `\\${k}` : k) + c.buildRegExpStr();
-    });
-    if (typeof this.#index === "number") {
-      strList.unshift(`#${this.#index}`);
-    }
-    if (strList.length === 0) {
-      return "";
-    }
-    if (strList.length === 1) {
-      return strList[0];
-    }
-    return "(?:" + strList.join("|") + ")";
-  }
-};
-
-// node_modules/hono/dist/router/reg-exp-router/trie.js
-var Trie = class {
-  #context = { varIndex: 0 };
-  #root = new Node();
-  insert(path, index, pathErrorCheckOnly) {
-    const paramAssoc = [];
-    const groups = [];
-    for (let i = 0; ; ) {
-      let replaced = false;
-      path = path.replace(/\{[^}]+\}/g, (m) => {
-        const mark = `@\\${i}`;
-        groups[i] = [mark, m];
-        i++;
-        replaced = true;
-        return mark;
-      });
-      if (!replaced) {
-        break;
-      }
-    }
-    const tokens = path.match(/(?::[^\/]+)|(?:\/\*$)|./g) || [];
-    for (let i = groups.length - 1; i >= 0; i--) {
-      const [mark] = groups[i];
-      for (let j = tokens.length - 1; j >= 0; j--) {
-        if (tokens[j].indexOf(mark) !== -1) {
-          tokens[j] = tokens[j].replace(mark, groups[i][1]);
-          break;
-        }
-      }
-    }
-    this.#root.insert(tokens, index, paramAssoc, this.#context, pathErrorCheckOnly);
-    return paramAssoc;
-  }
-  buildRegExp() {
-    let regexp = this.#root.buildRegExpStr();
-    if (regexp === "") {
-      return [/^$/, [], []];
-    }
-    let captureIndex = 0;
-    const indexReplacementMap = [];
-    const paramReplacementMap = [];
-    regexp = regexp.replace(/#(\d+)|@(\d+)|\.\*\$/g, (_, handlerIndex, paramIndex) => {
-      if (handlerIndex !== void 0) {
-        indexReplacementMap[++captureIndex] = Number(handlerIndex);
-        return "$()";
-      }
-      if (paramIndex !== void 0) {
-        paramReplacementMap[Number(paramIndex)] = ++captureIndex;
-        return "";
-      }
-      return "";
-    });
-    return [new RegExp(`^${regexp}`), indexReplacementMap, paramReplacementMap];
-  }
-};
-
-// node_modules/hono/dist/router/reg-exp-router/router.js
-var nullMatcher = [/^$/, [], /* @__PURE__ */ Object.create(null)];
-var wildcardRegExpCache = /* @__PURE__ */ Object.create(null);
-function buildWildcardRegExp(path) {
-  return wildcardRegExpCache[path] ??= new RegExp(
-    path === "*" ? "" : `^${path.replace(
-      /\/\*$|([.\\+*[^\]$()])/g,
-      (_, metaChar) => metaChar ? `\\${metaChar}` : "(?:|/.*)"
-    )}$`
-  );
-}
-function clearWildcardRegExpCache() {
-  wildcardRegExpCache = /* @__PURE__ */ Object.create(null);
-}
-function buildMatcherFromPreprocessedRoutes(routes) {
-  const trie = new Trie();
-  const handlerData = [];
-  if (routes.length === 0) {
-    return nullMatcher;
-  }
-  const routesWithStaticPathFlag = routes.map(
-    (route) => [!/\*|\/:/.test(route[0]), ...route]
-  ).sort(
-    ([isStaticA, pathA], [isStaticB, pathB]) => isStaticA ? 1 : isStaticB ? -1 : pathA.length - pathB.length
-  );
-  const staticMap = /* @__PURE__ */ Object.create(null);
-  for (let i = 0, j = -1, len = routesWithStaticPathFlag.length; i < len; i++) {
-    const [pathErrorCheckOnly, path, handlers] = routesWithStaticPathFlag[i];
-    if (pathErrorCheckOnly) {
-      staticMap[path] = [handlers.map(([h]) => [h, /* @__PURE__ */ Object.create(null)]), emptyParam];
-    } else {
-      j++;
-    }
-    let paramAssoc;
+// === Navigator-AI Backend Endpoints ===
+// Ping endpoint
+app.get('/ping', (c) => {
+    return c.text('pong');
+});
+// File upload endpoint
+app.post('/upload', async (c) => {
     try {
-      paramAssoc = trie.insert(path, j, pathErrorCheckOnly);
-    } catch (e) {
-      throw e === PATH_ERROR ? new UnsupportedPathError(path) : e;
-    }
-    if (pathErrorCheckOnly) {
-      continue;
-    }
-    handlerData[j] = handlers.map(([h, paramCount]) => {
-      const paramIndexMap = /* @__PURE__ */ Object.create(null);
-      paramCount -= 1;
-      for (; paramCount >= 0; paramCount--) {
-        const [key, value] = paramAssoc[paramCount];
-        paramIndexMap[key] = value;
-      }
-      return [h, paramIndexMap];
-    });
-  }
-  const [regexp, indexReplacementMap, paramReplacementMap] = trie.buildRegExp();
-  for (let i = 0, len = handlerData.length; i < len; i++) {
-    for (let j = 0, len2 = handlerData[i].length; j < len2; j++) {
-      const map = handlerData[i][j]?.[1];
-      if (!map) {
-        continue;
-      }
-      const keys = Object.keys(map);
-      for (let k = 0, len3 = keys.length; k < len3; k++) {
-        map[keys[k]] = paramReplacementMap[map[keys[k]]];
-      }
-    }
-  }
-  const handlerMap = [];
-  for (const i in indexReplacementMap) {
-    handlerMap[i] = handlerData[indexReplacementMap[i]];
-  }
-  return [regexp, handlerMap, staticMap];
-}
-function findMiddleware(middleware, path) {
-  if (!middleware) {
-    return void 0;
-  }
-  for (const k of Object.keys(middleware).sort((a, b) => b.length - a.length)) {
-    if (buildWildcardRegExp(k).test(path)) {
-      return [...middleware[k]];
-    }
-  }
-  return void 0;
-}
-var RegExpRouter = class {
-  name = "RegExpRouter";
-  #middleware;
-  #routes;
-  constructor() {
-    this.#middleware = { [METHOD_NAME_ALL]: /* @__PURE__ */ Object.create(null) };
-    this.#routes = { [METHOD_NAME_ALL]: /* @__PURE__ */ Object.create(null) };
-  }
-  add(method, path, handler) {
-    const middleware = this.#middleware;
-    const routes = this.#routes;
-    if (!middleware || !routes) {
-      throw new Error(MESSAGE_MATCHER_IS_ALREADY_BUILT);
-    }
-    if (!middleware[method]) {
-      ;
-      [middleware, routes].forEach((handlerMap) => {
-        handlerMap[method] = /* @__PURE__ */ Object.create(null);
-        Object.keys(handlerMap[METHOD_NAME_ALL]).forEach((p) => {
-          handlerMap[method][p] = [...handlerMap[METHOD_NAME_ALL][p]];
+        const formData = await c.req.formData();
+        const file = formData.get('file');
+        if (!file) {
+            return c.text('No file uploaded', 400);
+        }
+        // Upload to SmartBucket (referral-docs)
+        const smartbucket = c.env.REFERRAL_DOCS;
+        const arrayBuffer = await file.arrayBuffer();
+        // Generate unique document ID
+        const documentId = `doc-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+        await smartbucket.put(documentId, new Uint8Array(arrayBuffer), {
+            httpMetadata: {
+                contentType: file.type || 'application/pdf',
+            },
+            customMetadata: {
+                originalName: file.name,
+                uploadedAt: new Date().toISOString()
+            }
         });
-      });
-    }
-    if (path === "/*") {
-      path = "*";
-    }
-    const paramCount = (path.match(/\/:/g) || []).length;
-    if (/\*$/.test(path)) {
-      const re = buildWildcardRegExp(path);
-      if (method === METHOD_NAME_ALL) {
-        Object.keys(middleware).forEach((m) => {
-          middleware[m][path] ||= findMiddleware(middleware[m], path) || findMiddleware(middleware[METHOD_NAME_ALL], path) || [];
+        // Return document ID for subsequent API calls
+        return c.json({
+            success: true,
+            message: 'File uploaded successfully',
+            id: documentId,
+            uploadedAt: new Date().toISOString()
         });
-      } else {
-        middleware[method][path] ||= findMiddleware(middleware[method], path) || findMiddleware(middleware[METHOD_NAME_ALL], path) || [];
-      }
-      Object.keys(middleware).forEach((m) => {
-        if (method === METHOD_NAME_ALL || method === m) {
-          Object.keys(middleware[m]).forEach((p) => {
-            re.test(p) && middleware[m][p].push([handler, paramCount]);
-          });
-        }
-      });
-      Object.keys(routes).forEach((m) => {
-        if (method === METHOD_NAME_ALL || method === m) {
-          Object.keys(routes[m]).forEach(
-            (p) => re.test(p) && routes[m][p].push([handler, paramCount])
-          );
-        }
-      });
-      return;
     }
-    const paths = checkOptionalParameter(path) || [path];
-    for (let i = 0, len = paths.length; i < len; i++) {
-      const path2 = paths[i];
-      Object.keys(routes).forEach((m) => {
-        if (method === METHOD_NAME_ALL || method === m) {
-          routes[m][path2] ||= [
-            ...findMiddleware(middleware[m], path2) || findMiddleware(middleware[METHOD_NAME_ALL], path2) || []
-          ];
-          routes[m][path2].push([handler, paramCount - len + i + 1]);
-        }
-      });
-    }
-  }
-  match = match;
-  buildAllMatchers() {
-    const matchers = /* @__PURE__ */ Object.create(null);
-    Object.keys(this.#routes).concat(Object.keys(this.#middleware)).forEach((method) => {
-      matchers[method] ||= this.#buildMatcher(method);
-    });
-    this.#middleware = this.#routes = void 0;
-    clearWildcardRegExpCache();
-    return matchers;
-  }
-  #buildMatcher(method) {
-    const routes = [];
-    let hasOwnRoute = method === METHOD_NAME_ALL;
-    [this.#middleware, this.#routes].forEach((r) => {
-      const ownRoute = r[method] ? Object.keys(r[method]).map((path) => [path, r[method][path]]) : [];
-      if (ownRoute.length !== 0) {
-        hasOwnRoute ||= true;
-        routes.push(...ownRoute);
-      } else if (method !== METHOD_NAME_ALL) {
-        routes.push(
-          ...Object.keys(r[METHOD_NAME_ALL]).map((path) => [path, r[METHOD_NAME_ALL][path]])
-        );
-      }
-    });
-    if (!hasOwnRoute) {
-      return null;
-    } else {
-      return buildMatcherFromPreprocessedRoutes(routes);
-    }
-  }
-};
-
-// node_modules/hono/dist/router/smart-router/router.js
-var SmartRouter = class {
-  name = "SmartRouter";
-  #routers = [];
-  #routes = [];
-  constructor(init) {
-    this.#routers = init.routers;
-  }
-  add(method, path, handler) {
-    if (!this.#routes) {
-      throw new Error(MESSAGE_MATCHER_IS_ALREADY_BUILT);
-    }
-    this.#routes.push([method, path, handler]);
-  }
-  match(method, path) {
-    if (!this.#routes) {
-      throw new Error("Fatal error");
-    }
-    const routers = this.#routers;
-    const routes = this.#routes;
-    const len = routers.length;
-    let i = 0;
-    let res;
-    for (; i < len; i++) {
-      const router = routers[i];
-      try {
-        for (let i2 = 0, len2 = routes.length; i2 < len2; i2++) {
-          router.add(...routes[i2]);
-        }
-        res = router.match(method, path);
-      } catch (e) {
-        if (e instanceof UnsupportedPathError) {
-          continue;
-        }
-        throw e;
-      }
-      this.match = router.match.bind(router);
-      this.#routers = [router];
-      this.#routes = void 0;
-      break;
-    }
-    if (i === len) {
-      throw new Error("Fatal error");
-    }
-    this.name = `SmartRouter + ${this.activeRouter.name}`;
-    return res;
-  }
-  get activeRouter() {
-    if (this.#routes || this.#routers.length !== 1) {
-      throw new Error("No active router has been determined yet.");
-    }
-    return this.#routers[0];
-  }
-};
-
-// node_modules/hono/dist/router/trie-router/node.js
-var emptyParams = /* @__PURE__ */ Object.create(null);
-var Node2 = class {
-  #methods;
-  #children;
-  #patterns;
-  #order = 0;
-  #params = emptyParams;
-  constructor(method, handler, children) {
-    this.#children = children || /* @__PURE__ */ Object.create(null);
-    this.#methods = [];
-    if (method && handler) {
-      const m = /* @__PURE__ */ Object.create(null);
-      m[method] = { handler, possibleKeys: [], score: 0 };
-      this.#methods = [m];
-    }
-    this.#patterns = [];
-  }
-  insert(method, path, handler) {
-    this.#order = ++this.#order;
-    let curNode = this;
-    const parts = splitRoutingPath(path);
-    const possibleKeys = [];
-    for (let i = 0, len = parts.length; i < len; i++) {
-      const p = parts[i];
-      const nextP = parts[i + 1];
-      const pattern = getPattern(p, nextP);
-      const key = Array.isArray(pattern) ? pattern[0] : p;
-      if (key in curNode.#children) {
-        curNode = curNode.#children[key];
-        if (pattern) {
-          possibleKeys.push(pattern[1]);
-        }
-        continue;
-      }
-      curNode.#children[key] = new Node2();
-      if (pattern) {
-        curNode.#patterns.push(pattern);
-        possibleKeys.push(pattern[1]);
-      }
-      curNode = curNode.#children[key];
-    }
-    curNode.#methods.push({
-      [method]: {
-        handler,
-        possibleKeys: possibleKeys.filter((v, i, a) => a.indexOf(v) === i),
-        score: this.#order
-      }
-    });
-    return curNode;
-  }
-  #getHandlerSets(node, method, nodeParams, params) {
-    const handlerSets = [];
-    for (let i = 0, len = node.#methods.length; i < len; i++) {
-      const m = node.#methods[i];
-      const handlerSet = m[method] || m[METHOD_NAME_ALL];
-      const processedSet = {};
-      if (handlerSet !== void 0) {
-        handlerSet.params = /* @__PURE__ */ Object.create(null);
-        handlerSets.push(handlerSet);
-        if (nodeParams !== emptyParams || params && params !== emptyParams) {
-          for (let i2 = 0, len2 = handlerSet.possibleKeys.length; i2 < len2; i2++) {
-            const key = handlerSet.possibleKeys[i2];
-            const processed = processedSet[handlerSet.score];
-            handlerSet.params[key] = params?.[key] && !processed ? params[key] : nodeParams[key] ?? params?.[key];
-            processedSet[handlerSet.score] = true;
-          }
-        }
-      }
-    }
-    return handlerSets;
-  }
-  search(method, path) {
-    const handlerSets = [];
-    this.#params = emptyParams;
-    const curNode = this;
-    let curNodes = [curNode];
-    const parts = splitPath(path);
-    const curNodesQueue = [];
-    for (let i = 0, len = parts.length; i < len; i++) {
-      const part = parts[i];
-      const isLast = i === len - 1;
-      const tempNodes = [];
-      for (let j = 0, len2 = curNodes.length; j < len2; j++) {
-        const node = curNodes[j];
-        const nextNode = node.#children[part];
-        if (nextNode) {
-          nextNode.#params = node.#params;
-          if (isLast) {
-            if (nextNode.#children["*"]) {
-              handlerSets.push(
-                ...this.#getHandlerSets(nextNode.#children["*"], method, node.#params)
-              );
+    catch (error) {
+        console.error('Upload error:', error);
+        return c.json({
+            success: false,
+            error: {
+                code: "UPLOAD_FAILED",
+                message: "Failed to process document",
+                statusCode: 500
             }
-            handlerSets.push(...this.#getHandlerSets(nextNode, method, node.#params));
-          } else {
-            tempNodes.push(nextNode);
-          }
-        }
-        for (let k = 0, len3 = node.#patterns.length; k < len3; k++) {
-          const pattern = node.#patterns[k];
-          const params = node.#params === emptyParams ? {} : { ...node.#params };
-          if (pattern === "*") {
-            const astNode = node.#children["*"];
-            if (astNode) {
-              handlerSets.push(...this.#getHandlerSets(astNode, method, node.#params));
-              astNode.#params = params;
-              tempNodes.push(astNode);
-            }
-            continue;
-          }
-          const [key, name, matcher] = pattern;
-          if (!part && !(matcher instanceof RegExp)) {
-            continue;
-          }
-          const child = node.#children[key];
-          const restPathString = parts.slice(i).join("/");
-          if (matcher instanceof RegExp) {
-            const m = matcher.exec(restPathString);
-            if (m) {
-              params[name] = m[0];
-              handlerSets.push(...this.#getHandlerSets(child, method, node.#params, params));
-              if (Object.keys(child.#children).length) {
-                child.#params = params;
-                const componentCount = m[0].match(/\//)?.length ?? 0;
-                const targetCurNodes = curNodesQueue[componentCount] ||= [];
-                targetCurNodes.push(child);
-              }
-              continue;
-            }
-          }
-          if (matcher === true || matcher.test(part)) {
-            params[name] = part;
-            if (isLast) {
-              handlerSets.push(...this.#getHandlerSets(child, method, params, node.#params));
-              if (child.#children["*"]) {
-                handlerSets.push(
-                  ...this.#getHandlerSets(child.#children["*"], method, params, node.#params)
-                );
-              }
-            } else {
-              child.#params = params;
-              tempNodes.push(child);
-            }
-          }
-        }
-      }
-      curNodes = tempNodes.concat(curNodesQueue.shift() ?? []);
+        }, 500);
     }
-    if (handlerSets.length > 1) {
-      handlerSets.sort((a, b) => {
-        return a.score - b.score;
-      });
-    }
-    return [handlerSets.map(({ handler, params }) => [handler, params])];
-  }
-};
-
-// node_modules/hono/dist/router/trie-router/router.js
-var TrieRouter = class {
-  name = "TrieRouter";
-  #node;
-  constructor() {
-    this.#node = new Node2();
-  }
-  add(method, path, handler) {
-    const results = checkOptionalParameter(path);
-    if (results) {
-      for (let i = 0, len = results.length; i < len; i++) {
-        this.#node.insert(method, results[i], handler);
-      }
-      return;
-    }
-    this.#node.insert(method, path, handler);
-  }
-  match(method, path) {
-    return this.#node.search(method, path);
-  }
-};
-
-// node_modules/hono/dist/hono.js
-var Hono2 = class extends Hono {
-  constructor(options = {}) {
-    super(options);
-    this.router = options.router ?? new SmartRouter({
-      routers: [new RegExpRouter(), new TrieRouter()]
-    });
-  }
-};
-
-// node_modules/hono/dist/utils/color.js
-function getColorEnabled() {
-  const { process, Deno } = globalThis;
-  const isNoColor = typeof Deno?.noColor === "boolean" ? Deno.noColor : process !== void 0 ? "NO_COLOR" in process?.env : false;
-  return !isNoColor;
-}
-async function getColorEnabledAsync() {
-  const { navigator } = globalThis;
-  const cfWorkers = "cloudflare:workers";
-  const isNoColor = navigator !== void 0 && navigator.userAgent === "Cloudflare-Workers" ? await (async () => {
+});
+// AI Extraction endpoint
+// PDF Extraction endpoint using SmartBucket AI with retry logic
+app.post('/extract', async (c) => {
     try {
-      return "NO_COLOR" in ((await import(cfWorkers)).env ?? {});
-    } catch {
-      return false;
-    }
-  })() : !getColorEnabled();
-  return !isNoColor;
-}
-
-// node_modules/hono/dist/middleware/logger/index.js
-var humanize = (times) => {
-  const [delimiter, separator] = [",", "."];
-  const orderTimes = times.map((v) => v.replace(/(\d)(?=(\d\d\d)+(?!\d))/g, "$1" + delimiter));
-  return orderTimes.join(separator);
-};
-var time = (start) => {
-  const delta = Date.now() - start;
-  return humanize([delta < 1e3 ? delta + "ms" : Math.round(delta / 1e3) + "s"]);
-};
-var colorStatus = async (status) => {
-  const colorEnabled = await getColorEnabledAsync();
-  if (colorEnabled) {
-    switch (status / 100 | 0) {
-      case 5:
-        return `\x1B[31m${status}\x1B[0m`;
-      case 4:
-        return `\x1B[33m${status}\x1B[0m`;
-      case 3:
-        return `\x1B[36m${status}\x1B[0m`;
-      case 2:
-        return `\x1B[32m${status}\x1B[0m`;
-    }
-  }
-  return `${status}`;
-};
-async function log(fn, prefix, method, path, status = 0, elapsed) {
-  const out = prefix === "<--" ? `${prefix} ${method} ${path}` : `${prefix} ${method} ${path} ${await colorStatus(status)} ${elapsed}`;
-  fn(out);
-}
-var logger = (fn = console.log) => {
-  return async function logger2(c, next) {
-    const { method, url } = c.req;
-    const path = url.slice(url.indexOf("/", 8));
-    await log(fn, "<--", method, path);
-    const start = Date.now();
-    await next();
-    await log(fn, "-->", method, path, c.res.status, time(start));
-  };
-};
-
-// src/api/mockData.ts
-var MOCK_REFERRALS_LIST = {
-  success: true,
-  data: {
-    referrals: [
-      {
-        id: "ref-001",
-        patientFirstName: "Sarah",
-        patientLastName: "Johnson",
-        patientEmail: "sarah.johnson@email.com",
-        specialty: "Cardiology",
-        payer: "Blue Cross Blue Shield",
-        status: "Scheduled",
-        appointmentDate: "2025-11-22T10:30:00Z",
-        referralDate: "2025-11-10T14:00:00Z",
-        noShowRisk: 15
-      },
-      {
-        id: "ref-002",
-        patientFirstName: "Michael",
-        patientLastName: "Chen",
-        patientEmail: "michael.chen@email.com",
-        specialty: "Orthopedics",
-        payer: "UnitedHealthcare",
-        status: "Pending",
-        appointmentDate: "2025-11-25T14:00:00Z",
-        referralDate: "2025-11-15T09:30:00Z",
-        noShowRisk: 42
-      }
-    ],
-    pagination: {
-      page: 1,
-      limit: 50,
-      total: 62,
-      totalPages: 2,
-      hasNextPage: true,
-      hasPreviousPage: false
-    }
-  },
-  message: "Referrals retrieved successfully"
-};
-var MOCK_REFERRAL_DETAILS = {
-  success: true,
-  data: {
-    id: "ref-001",
-    patientFirstName: "Sarah",
-    patientLastName: "Johnson",
-    patientEmail: "sarah.johnson@email.com",
-    age: 58,
-    specialty: "Cardiology",
-    payer: "Blue Cross Blue Shield",
-    plan: "Blue Cross PPO Plus",
-    status: "Scheduled",
-    urgency: "urgent",
-    appointmentDate: "2025-11-22T10:30:00Z",
-    referralDate: "2025-11-10T14:00:00Z",
-    noShowRisk: 15,
-    providerName: "Dr. James Mitchell",
-    facilityName: "Downtown Medical Center",
-    reason: "Chest pain and irregular heartbeat",
-    steps: [
-      {
-        id: "step-1",
-        label: "Intake",
-        status: "completed",
-        completedAt: "2025-11-10T14:15:00Z",
-        description: "Initial referral received and processed"
-      },
-      {
-        id: "step-2",
-        label: "Eligibility",
-        status: "completed",
-        completedAt: "2025-11-11T09:30:00Z",
-        description: "Insurance eligibility verified"
-      },
-      {
-        id: "step-3",
-        label: "Prior Authorization",
-        status: "completed",
-        completedAt: "2025-11-13T16:45:00Z",
-        description: "PA approved for specialist consultation"
-      },
-      {
-        id: "step-4",
-        label: "Scheduled",
-        status: "current",
-        completedAt: "2025-11-15T11:20:00Z",
-        description: "Appointment scheduled with provider"
-      },
-      {
-        id: "step-5",
-        label: "Completed",
-        status: "upcoming",
-        description: "Appointment attended"
-      }
-    ],
-    actionLog: [
-      {
-        id: "log-1",
-        event: "Referral Created",
-        type: "system",
-        timestamp: "2025-11-10T14:00:00Z",
-        user: "Dr. Emma Wilson",
-        description: "Referral created by primary care physician",
-        details: {
-          source: "EHR Integration"
+        const body = await c.req.json();
+        const { id } = body;
+        if (!id) {
+            return c.json({ error: 'Document ID is required' }, 400);
         }
-      },
-      {
-        id: "log-2",
-        event: "Intake Completed",
-        type: "user",
-        timestamp: "2025-11-10T14:15:00Z",
-        user: "Linda Martinez",
-        description: "Patient demographics and insurance information verified"
-      },
-      {
-        id: "log-3",
-        event: "Eligibility Check Started",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:00:00Z",
-        user: "System",
-        description: "Automated eligibility verification initiated"
-      },
-      {
-        id: "log-4",
-        event: "Eligibility Verified",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:30:00Z",
-        user: "System",
-        description: "Insurance active, benefits confirmed",
-        details: {
-          copay: "$40",
-          coinsurance: "20%"
+        // Get the PDF from SmartBucket
+        const smartbucket = c.env.REFERRAL_DOCS;
+        const pdfObject = await smartbucket.get(id);
+        if (!pdfObject) {
+            return c.json({ error: 'Document not found' }, 404);
         }
-      },
-      {
-        id: "log-5",
-        event: "PA Request Submitted",
-        type: "pa",
-        timestamp: "2025-11-12T10:15:00Z",
-        user: "Sarah Chen",
-        description: "Prior authorization request submitted to payer"
-      },
-      {
-        id: "log-6",
-        event: "PA Approved",
-        type: "pa",
-        timestamp: "2025-11-13T16:45:00Z",
-        user: "Blue Cross Blue Shield",
-        description: "Prior authorization approved - Authorization #PA-2025-8847",
-        details: {
-          authNumber: "PA-2025-8847",
-          validUntil: "2026-02-13"
-        }
-      },
-      {
-        id: "log-7",
-        event: "Appointment Scheduled",
-        type: "scheduling",
-        timestamp: "2025-11-15T11:20:00Z",
-        user: "Mike Johnson",
-        description: "Appointment scheduled for Nov 22, 2025 at 10:30 AM"
-      },
-      {
-        id: "log-8",
-        event: "Confirmation SMS Sent",
-        type: "message",
-        timestamp: "2025-11-15T11:25:00Z",
-        user: "System",
-        description: "Appointment confirmation sent via SMS"
-      },
-      {
-        id: "log-9",
-        event: "Reminder Email Sent",
-        type: "message",
-        timestamp: "2025-11-19T09:00:00Z",
-        user: "System",
-        description: "3-day appointment reminder sent via email"
-      },
-      {
-        id: "log-10",
-        event: "Patient Confirmed Attendance",
-        type: "message",
-        timestamp: "2025-11-19T14:30:00Z",
-        user: "Sarah Johnson",
-        description: "Patient replied 'YES' to confirmation request"
-      }
-    ],
-    messages: [
-      {
-        id: "msg-1",
-        channel: "SMS",
-        content: "Hi Sarah, your cardiology appointment with Dr. James Mitchell is scheduled for Nov 22 at 10:30 AM at Downtown Medical Center. Please reply YES to confirm or CANCEL to reschedule.",
-        timestamp: "2025-11-15T11:25:00Z",
-        status: "delivered",
-        direction: "outbound",
-        recipient: "sarah.johnson@email.com"
-      },
-      {
-        id: "msg-2",
-        channel: "SMS",
-        content: "YES",
-        timestamp: "2025-11-19T14:30:00Z",
-        status: "delivered",
-        direction: "inbound"
-      },
-      {
-        id: "msg-3",
-        channel: "Email",
-        content: "Dear Sarah Johnson,\\n\\nThis is a reminder that you have an appointment scheduled:\\n\\nDate: Friday, November 22, 2025\\nTime: 10:30 AM\\nProvider: Dr. James Mitchell\\nLocation: Downtown Medical Center, 123 Main St\\nSpecialty: Cardiology\\n\\nPlease bring your insurance card and a valid ID. If you need to reschedule, please call us at (555) 123-4567.\\n\\nThank you!",
-        timestamp: "2025-11-19T09:00:00Z",
-        status: "delivered",
-        direction: "outbound",
-        recipient: "sarah.johnson@email.com"
-      }
-    ]
-  },
-  message: "Referral details retrieved successfully"
-};
-var MOCK_REFERRAL_LOGS = {
-  success: true,
-  data: {
-    referralId: "ref-001",
-    logs: [
-      {
-        id: "log-10",
-        event: "Patient Confirmed Attendance",
-        type: "message",
-        timestamp: "2025-11-19T14:30:00Z",
-        user: "Sarah Johnson",
-        description: "Patient replied 'YES' to confirmation request",
-        details: null
-      },
-      {
-        id: "log-9",
-        event: "Reminder Email Sent",
-        type: "message",
-        timestamp: "2025-11-19T09:00:00Z",
-        user: "System",
-        description: "3-day appointment reminder sent via email",
-        details: null
-      },
-      {
-        id: "log-8",
-        event: "Confirmation SMS Sent",
-        type: "message",
-        timestamp: "2025-11-15T11:25:00Z",
-        user: "System",
-        description: "Appointment confirmation sent via SMS",
-        details: null
-      },
-      {
-        id: "log-7",
-        event: "Appointment Scheduled",
-        type: "scheduling",
-        timestamp: "2025-11-15T11:20:00Z",
-        user: "Mike Johnson",
-        description: "Appointment scheduled for Nov 22, 2025 at 10:30 AM",
-        details: null
-      },
-      {
-        id: "log-6",
-        event: "PA Approved",
-        type: "pa",
-        timestamp: "2025-11-13T16:45:00Z",
-        user: "Blue Cross Blue Shield",
-        description: "Prior authorization approved - Authorization #PA-2025-8847",
-        details: {
-          authNumber: "PA-2025-8847",
-          validUntil: "2026-02-13"
-        }
-      },
-      {
-        id: "log-5",
-        event: "PA Request Submitted",
-        type: "pa",
-        timestamp: "2025-11-12T10:15:00Z",
-        user: "Sarah Chen",
-        description: "Prior authorization request submitted to payer",
-        details: null
-      },
-      {
-        id: "log-4",
-        event: "Eligibility Verified",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:30:00Z",
-        user: "System",
-        description: "Insurance active, benefits confirmed",
-        details: {
-          copay: "$40",
-          coinsurance: "20%"
-        }
-      },
-      {
-        id: "log-3",
-        event: "Eligibility Check Started",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:00:00Z",
-        user: "System",
-        description: "Automated eligibility verification initiated",
-        details: null
-      },
-      {
-        id: "log-2",
-        event: "Intake Completed",
-        type: "user",
-        timestamp: "2025-11-10T14:15:00Z",
-        user: "Linda Martinez",
-        description: "Patient demographics and insurance information verified",
-        details: null
-      },
-      {
-        id: "log-1",
-        event: "Referral Created",
-        type: "system",
-        timestamp: "2025-11-10T14:00:00Z",
-        user: "Dr. Emma Wilson",
-        description: "Referral created by primary care physician",
-        details: {
-          source: "EHR Integration"
-        }
-      }
-    ],
-    pagination: {
-      limit: 100,
-      offset: 0,
-      total: 10,
-      hasMore: false
-    }
-  },
-  message: "Logs retrieved successfully"
-};
-
-// src/api/index.ts
-function determineSpecialty(referralReason) {
-  let specialty = "General Practitioner";
-  const reasonLower = referralReason.toLowerCase();
-  const specialtyMap = {
-    "Cardiologist": ["heart", "cardio", "chest", "palpitation", "pulse", "pressure"],
-    "Dermatologist": ["skin", "derma", "rash", "itch", "acne", "mole", "lesion", "nevus"],
-    "Orthopedist": ["bone", "joint", "knee", "back", "spine", "fracture", "ortho", "shoulder", "hip"],
-    "Neurologist": ["headache", "migraine", "seizure", "numbness", "dizzy", "brain", "nerve", "neuro"],
-    "Pediatrician": ["child", "baby", "infant", "toddler", "pediatric", "growth", "allergy"],
-    "Psychiatrist": ["mental", "depress", "anxiety", "mood", "psych", "behavior"],
-    "Oncologist": ["cancer", "tumor", "lump", "onco", "chemo", "radiation", "mammogram", "breast", "bi-rads"],
-    "Gastroenterologist": ["stomach", "gut", "digest", "bowel", "reflux", "gastro", "liver", "anemia"],
-    "Pulmonologist": ["lung", "breath", "cough", "pulmo", "respiratory", "asthma"],
-    "Urologist": ["urine", "bladder", "kidney", "prostate", "uro"],
-    "Ophthalmologist": ["eye", "vision", "sight", "blind", "optic"],
-    "ENT Specialist": ["ear", "nose", "throat", "sinus", "hearing"],
-    "Endocrinologist": ["diabetes", "thyroid", "hormone", "sugar", "endo"],
-    "Rheumatologist": ["arthritis", "autoimmune", "lupus", "rheum"]
-  };
-  for (const [spec, keywords] of Object.entries(specialtyMap)) {
-    if (keywords.some((k) => reasonLower.includes(k))) {
-      specialty = spec;
-      break;
-    }
-  }
-  return specialty;
-}
-var app = new Hono2();
-app.use("*", logger());
-app.get("/health", (c) => {
-  return c.json({ status: "ok", timestamp: (/* @__PURE__ */ new Date()).toISOString() });
-});
-app.get("/ping", (c) => {
-  return c.text("pong");
-});
-app.post("/upload", async (c) => {
-  try {
-    const formData = await c.req.formData();
-    const file = formData.get("file");
-    if (!file) {
-      return c.text("No file uploaded", 400);
-    }
-    const smartbucket = c.env.REFERRAL_DOCS;
-    const arrayBuffer = await file.arrayBuffer();
-    const documentId = `doc-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-    await smartbucket.put(documentId, new Uint8Array(arrayBuffer), {
-      httpMetadata: {
-        contentType: file.type || "application/pdf"
-      },
-      customMetadata: {
-        originalName: file.name,
-        uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
-      }
-    });
-    return c.json({
-      success: true,
-      message: "File uploaded successfully",
-      id: documentId,
-      uploadedAt: (/* @__PURE__ */ new Date()).toISOString()
-    });
-  } catch (error) {
-    console.error("Upload error:", error);
-    return c.json({
-      success: false,
-      error: {
-        code: "UPLOAD_FAILED",
-        message: "Failed to process document",
-        statusCode: 500
-      }
-    }, 500);
-  }
-});
-app.post("/extract", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { id } = body;
-    if (!id) {
-      return c.json({ error: "Document ID is required" }, 400);
-    }
-    const smartbucket = c.env.REFERRAL_DOCS;
-    const pdfObject = await smartbucket.get(id);
-    if (!pdfObject) {
-      return c.json({ error: "Document not found" }, 404);
-    }
-    const extractionPrompt = `Extract patient information from this medical referral document.
+        // Use SmartBucket's documentChat for AI extraction  
+        const extractionPrompt = `Extract patient and referral information from this medical referral document.
 
 Return ONLY a JSON object with these exact fields:
 {
-  "patientName": "Full patient name (first and last)",
-  "dateOfBirth": "YYYY-MM-DD format", 
-  "referralReason": "Medical condition or symptoms",
-  "insuranceProvider": "Insurance company name"
+  "patientFirstName": "Patient's first name",
+  "patientLastName": "Patient's last name",
+  "patientEmail": "Patient's email address (if available, else null)",
+  "age": "Patient's age (number, if available, else null)",
+  "specialty": "Medical specialty for referral",
+  "payer": "Insurance payer name",
+  "plan": "Insurance plan name",
+  "urgency": "Urgency level (routine, urgent, or stat)",
+  "appointmentDate": "Appointment date if specified (YYYY-MM-DD, else null)",
+  "referralDate": "Date referral was created (YYYY-MM-DD)",
+  "providerName": "Referring provider's name",
+  "facilityName": "Facility/practice name",
+  "reason": "Reason for referral"
 }
 
 Instructions:
 - Read the document carefully
 - Extract EXACTLY what the document says
 - Convert dates to YYYY-MM-DD format
-- If a field is missing, use "Unknown"
+- If a field is missing, use null
 - Return ONLY valid JSON, no markdown or explanation`;
-    const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    let attempts = 0;
-    const maxAttempts = 3;
-    let aiResponse;
-    while (attempts < maxAttempts) {
-      try {
-        aiResponse = await smartbucket.documentChat({
-          objectId: id,
-          input: extractionPrompt,
-          requestId: `${requestId}-attempt-${attempts}`
-        });
-        if (aiResponse && aiResponse.answer) {
-          const answerText2 = typeof aiResponse.answer === "string" ? aiResponse.answer : JSON.stringify(aiResponse.answer);
-          if (answerText2.trim()) {
-            console.log("SmartBucket AI Response:", answerText2);
-            aiResponse.answer = answerText2;
-            break;
-          }
+        const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+        // Retry logic for documentChat (may need time to index)
+        let attempts = 0;
+        const maxAttempts = 3;
+        let aiResponse;
+        while (attempts < maxAttempts) {
+            try {
+                aiResponse = await smartbucket.documentChat({
+                    objectId: id,
+                    input: extractionPrompt,
+                    requestId: `${requestId}-attempt-${attempts}`
+                });
+                // Check if we got a valid response
+                if (aiResponse && aiResponse.answer) {
+                    const answerText = typeof aiResponse.answer === 'string' ? aiResponse.answer : JSON.stringify(aiResponse.answer);
+                    if (answerText.trim()) {
+                        console.log('SmartBucket AI Response:', answerText);
+                        aiResponse.answer = answerText; // Normalize to string
+                        break;
+                    }
+                }
+                // Empty response, wait and retry
+                attempts++;
+                if (attempts < maxAttempts) {
+                    console.log(`Empty response, retrying (${attempts}/${maxAttempts})...`);
+                    await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
+                }
+            }
+            catch (chatError) {
+                console.error(`documentChat attempt ${attempts + 1} failed:`, chatError);
+                attempts++;
+                if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+                else {
+                    throw chatError;
+                }
+            }
         }
-        attempts++;
-        if (attempts < maxAttempts) {
-          console.log(`Empty response, retrying (${attempts}/${maxAttempts})...`);
-          await new Promise((resolve) => setTimeout(resolve, 3e3));
+        if (!aiResponse || !aiResponse.answer) {
+            return c.json({
+                error: 'AI extraction returned empty response after retries. Document may still be indexing.',
+                suggestion: 'Try again in 10-15 seconds'
+            }, 503);
         }
-      } catch (chatError) {
-        console.error(`documentChat attempt ${attempts + 1} failed:`, chatError);
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 3e3));
-        } else {
-          throw chatError;
+        // Ensure answer is a string
+        const answerText = typeof aiResponse.answer === 'string' ? aiResponse.answer : JSON.stringify(aiResponse.answer);
+        // Parse the AI response
+        let extractedData;
+        try {
+            // Clean up potential markdown
+            const cleanJson = answerText.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
+            const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+                extractedData = JSON.parse(jsonMatch[0]);
+            }
+            else {
+                throw new Error('No JSON found in AI response');
+            }
         }
-      }
+        catch (parseError) {
+            console.error('Failed to parse AI response:', answerText);
+            return c.json({
+                error: 'Failed to parse AI response',
+                rawResponse: answerText
+            }, 500);
+        }
+        console.log('Extracted Data:', extractedData);
+        return c.json(extractedData);
     }
-    if (!aiResponse || !aiResponse.answer) {
-      return c.json({
-        error: "AI extraction returned empty response after retries. Document may still be indexing.",
-        suggestion: "Try again in 10-15 seconds"
-      }, 503);
+    catch (error) {
+        console.error('Extract error:', error);
+        return c.json({
+            error: 'Extraction failed: ' + (error instanceof Error ? error.message : String(error))
+        }, 500);
     }
-    const answerText = typeof aiResponse.answer === "string" ? aiResponse.answer : JSON.stringify(aiResponse.answer);
-    let extractedData;
+});
+// Workflow Orchestration endpoint
+app.post('/orchestrate', async (c) => {
     try {
-      const cleanJson = answerText.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
-      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        extractedData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in AI response");
-      }
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", answerText);
-      return c.json({
-        error: "Failed to parse AI response",
-        rawResponse: answerText
-      }, 500);
-    }
-    console.log("Extracted Data:", extractedData);
-    return c.json(extractedData);
-  } catch (error) {
-    console.error("Extract error:", error);
-    return c.json({
-      error: "Extraction failed: " + (error instanceof Error ? error.message : String(error))
-    }, 500);
-  }
-});
-app.post("/orchestrate", async (c) => {
-  try {
-    const body = await c.req.json();
-    const { patientName, referralReason, insuranceProvider } = body;
-    if (!patientName || !referralReason) {
-      return c.json({
-        success: false,
-        error: {
-          code: "INVALID_REQUEST",
-          message: "Missing required fields",
-          statusCode: 400
+        const body = await c.req.json();
+        const { referralData } = body;
+        if (!referralData || !referralData.patientFirstName || !referralData.reason) {
+            return c.json({
+                success: false,
+                error: {
+                    code: "INVALID_REQUEST",
+                    message: "Missing required fields in referralData",
+                    statusCode: 400
+                }
+            }, 400);
         }
-      }, 400);
-    }
-    const specialty = determineSpecialty(referralReason);
-    const insuranceStatus = insuranceProvider && insuranceProvider.toLowerCase().includes("blue") ? "Approved" : "Pending Review";
-    const db = c.env.REFERRALS_DB;
-    const specialistsResult = await db.executeQuery({
-      sqlQuery: `SELECT * FROM specialists WHERE specialty = '${specialty}'`
-    });
-    let availableSlots = [];
-    let selectedSpecialist = null;
-    const getRows = (result) => {
-      if (Array.isArray(result)) return result;
-      if (result && result.results) {
-        if (Array.isArray(result.results)) return result.results;
-        if (typeof result.results === "string") {
-          try {
-            return JSON.parse(result.results);
-          } catch (e) {
-            console.error("Failed to parse SQL results:", e);
+        const { patientFirstName, patientLastName, patientEmail, age, specialty: requestedSpecialty, payer, plan, urgency, appointmentDate, referralDate, providerName, facilityName, reason } = referralData;
+        // 1. Determine Specialist based on condition (Expanded keyword matching)
+        // Use requested specialty if available, otherwise infer from reason
+        const specialty = requestedSpecialty || determineSpecialty(reason);
+        // 2. Check Insurance (Mock logic)
+        const insuranceStatus = (payer && payer.toLowerCase().includes('blue')) ? 'Approved' : 'Pending Review';
+        // 3. Find Available Slots from DB
+        const db = c.env.REFERRALS_DB;
+        // Find specialists with the matching specialty
+        // Note: Using inline parameters for MVP as parameter syntax is unconfirmed
+        const specialistsResult = await db.executeQuery({
+            sqlQuery: `SELECT * FROM specialists WHERE specialty = '${specialty}'`
+        });
+        let availableSlots = [];
+        let selectedSpecialist = null;
+        // Helper to extract rows from SQL result
+        const getRows = (result) => {
+            if (Array.isArray(result))
+                return result;
+            if (result && result.results) {
+                if (Array.isArray(result.results))
+                    return result.results;
+                if (typeof result.results === 'string') {
+                    try {
+                        return JSON.parse(result.results);
+                    }
+                    catch (e) {
+                        console.error('Failed to parse SQL results:', e);
+                        return [];
+                    }
+                }
+            }
+            if (result && Array.isArray(result.rows))
+                return result.rows;
             return [];
-          }
+        };
+        // Check if we have results (handling potential response formats)
+        const specialists = getRows(specialistsResult);
+        if (specialists.length > 0) {
+            selectedSpecialist = specialists[0];
+            // Find slots for this specialist
+            const slotsResult = await db.executeQuery({
+                sqlQuery: `SELECT * FROM slots WHERE specialist_id = ${selectedSpecialist.id} AND is_booked = 0 AND start_time > '${new Date().toISOString()}' ORDER BY start_time ASC LIMIT 3`
+            });
+            const slots = getRows(slotsResult);
+            availableSlots = slots.map((slot) => slot.start_time);
         }
-      }
-      if (result && Array.isArray(result.rows)) return result.rows;
-      return [];
-    };
-    const specialists = getRows(specialistsResult);
-    if (specialists.length > 0) {
-      selectedSpecialist = specialists[0];
-      const slotsResult = await db.executeQuery({
-        sqlQuery: `SELECT * FROM slots WHERE specialist_id = ${selectedSpecialist.id} AND is_booked = 0 AND start_time > '${(/* @__PURE__ */ new Date()).toISOString()}' ORDER BY start_time ASC LIMIT 3`
-      });
-      const slots = getRows(slotsResult);
-      availableSlots = slots.map((slot) => slot.start_time);
+        // 4. Create Referral Record in DB
+        // Calculate no-show risk (mock logic)
+        const noShowRisk = Math.floor(Math.random() * 30) + 10; // 10-40%
+        const insertQuery = `INSERT INTO referrals (
+      patient_first_name, patient_last_name, patient_email, age, 
+      specialty, payer, plan, urgency, 
+      appointment_date, referral_date, provider_name, facility_name, reason,
+      specialist_id, status, no_show_risk
+    ) VALUES (
+      '${patientFirstName}', '${patientLastName}', '${patientEmail || ''}', ${age || 'NULL'},
+      '${specialty}', '${payer || ''}', '${plan || ''}', '${urgency || 'routine'}',
+      '${appointmentDate || ''}', '${referralDate || new Date().toISOString()}', '${providerName || ''}', '${facilityName || ''}', '${reason.replace(/'/g, "''")}',
+      ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending', ${noShowRisk}
+    )`;
+        await db.executeQuery({ sqlQuery: insertQuery });
+        // SQLite specific: Get last ID
+        const idResult = await db.executeQuery({ sqlQuery: 'SELECT last_insert_rowid() as id' });
+        const idRows = getRows(idResult);
+        const referralId = idRows[0]?.id || 'unknown';
+        return c.json({
+            success: true,
+            data: {
+                referralId: `ref-${referralId}`,
+                status: 'Processed',
+                orchestrationId: `orch-${Date.now()}`,
+                completedSteps: [
+                    { id: 'step-1', label: 'Intake', status: 'completed', completedAt: new Date().toISOString() }
+                ],
+                appointmentDetails: selectedSpecialist ? {
+                    providerName: selectedSpecialist.name,
+                    facilityName: 'Downtown Medical Center', // Mock
+                    facilityAddress: '123 Main St, New York, NY 10001' // Mock
+                } : null,
+                notificationsSent: { sms: false, email: false },
+                estimatedCompletionTime: new Date(Date.now() + 86400000).toISOString()
+            },
+            message: 'Referral orchestration completed successfully'
+        });
     }
-    const insertQuery = `INSERT INTO referrals (patient_name, condition, insurance_provider, specialist_id, status) 
-       VALUES ('${patientName}', '${referralReason}', '${insuranceProvider}', ${selectedSpecialist ? selectedSpecialist.id : "NULL"}, 'Pending')`;
-    await db.executeQuery({ sqlQuery: insertQuery });
-    const idResult = await db.executeQuery({ sqlQuery: "SELECT last_insert_rowid() as id" });
-    const idRows = getRows(idResult);
-    const referralId = idRows[0]?.id || "unknown";
-    return c.json({
-      success: true,
-      data: {
-        referralId: `ref-${referralId}`,
-        status: "Processed",
-        specialist: specialty,
-        assignedDoctor: selectedSpecialist ? selectedSpecialist.name : "Pending Assignment",
-        insuranceStatus,
-        availableSlots,
-        debug: {
-          specialtyUsed: specialty,
-          specialistsFound: specialists.length,
-          slotsFound: availableSlots.length
-        }
-      },
-      message: "Referral orchestration completed successfully"
-    });
-  } catch (error) {
-    console.error("Orchestrate error:", error);
-    return c.json({
-      success: false,
-      error: {
-        code: "ORCHESTRATION_FAILED",
-        message: "Failed to start orchestration: " + (error instanceof Error ? error.message : String(error)),
-        statusCode: 500
-      }
-    }, 500);
-  }
+    catch (error) {
+        console.error('Orchestrate error:', error);
+        return c.json({
+            success: false,
+            error: {
+                code: "ORCHESTRATION_FAILED",
+                message: "Failed to start orchestration: " + (error instanceof Error ? error.message : String(error)),
+                statusCode: 500
+            }
+        }, 500);
+    }
 });
-app.post("/seed", async (c) => {
-  try {
-    const db = c.env.REFERRALS_DB;
-    await db.executeQuery({
-      sqlQuery: `
+// Database Seeding Endpoint (For Demo Setup)
+app.post('/seed', async (c) => {
+    try {
+        const db = c.env.REFERRALS_DB;
+        // 1. Create Tables (SQLite Syntax)
+        await db.executeQuery({
+            sqlQuery: `
       CREATE TABLE IF NOT EXISTS specialists (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           name TEXT NOT NULL,
@@ -2254,9 +330,9 @@ app.post("/seed", async (c) => {
           email TEXT
       );
     `
-    });
-    await db.executeQuery({
-      sqlQuery: `
+        });
+        await db.executeQuery({
+            sqlQuery: `
       CREATE TABLE IF NOT EXISTS slots (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           specialist_id INTEGER REFERENCES specialists(id),
@@ -2264,193 +340,299 @@ app.post("/seed", async (c) => {
           is_booked INTEGER DEFAULT 0
       );
     `
-    });
-    await db.executeQuery({
-      sqlQuery: `
+        });
+        await db.executeQuery({
+            sqlQuery: `
       CREATE TABLE IF NOT EXISTS referrals (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          patient_name TEXT NOT NULL,
-          dob TEXT,
-          condition TEXT,
-          insurance_provider TEXT,
+          patient_first_name TEXT NOT NULL,
+          patient_last_name TEXT NOT NULL,
+          patient_email TEXT,
+          age INTEGER,
+          specialty TEXT,
+          payer TEXT,
+          plan TEXT,
+          urgency TEXT,
+          appointment_date TEXT,
+          referral_date TEXT,
+          provider_name TEXT,
+          facility_name TEXT,
+          reason TEXT,
           specialist_id INTEGER REFERENCES specialists(id),
           slot_id INTEGER REFERENCES slots(id),
           status TEXT DEFAULT 'Pending',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          no_show_risk INTEGER DEFAULT 0
       );
     `
-    });
-    await db.executeQuery({ sqlQuery: "DELETE FROM slots" });
-    await db.executeQuery({ sqlQuery: "DELETE FROM referrals" });
-    await db.executeQuery({ sqlQuery: "DELETE FROM specialists" });
-    const doctors = [
-      // Cardiologists (2)
-      { name: "Dr. James Mitchell", specialty: "Cardiologist", email: "james.mitchell@hospital.com" },
-      { name: "Dr. Sarah Rodriguez", specialty: "Cardiologist", email: "sarah.rodriguez@hospital.com" },
-      // Dermatologists (2)
-      { name: "Dr. Emily Chen", specialty: "Dermatologist", email: "emily.chen@hospital.com" },
-      { name: "Dr. Michael Smith", specialty: "Dermatologist", email: "michael.smith@hospital.com" },
-      // Orthopedists (2)
-      { name: "Dr. David Johnson", specialty: "Orthopedist", email: "david.johnson@hospital.com" },
-      { name: "Dr. Jessica Williams", specialty: "Orthopedist", email: "jessica.williams@hospital.com" },
-      // Neurologists (2)
-      { name: "Dr. Jennifer Brown", specialty: "Neurologist", email: "jennifer.brown@hospital.com" },
-      { name: "Dr. Robert Jones", specialty: "Neurologist", email: "robert.jones@hospital.com" },
-      // Pediatricians (2)
-      { name: "Dr. William Garcia", specialty: "Pediatrician", email: "william.garcia@hospital.com" },
-      { name: "Dr. Elizabeth Miller", specialty: "Pediatrician", email: "elizabeth.miller@hospital.com" },
-      // Psychiatrists (2)
-      { name: "Dr. John Davis", specialty: "Psychiatrist", email: "john.davis@hospital.com" },
-      { name: "Dr. Linda Rodriguez", specialty: "Psychiatrist", email: "linda.rodriguez@hospital.com" },
-      // Oncologists (2)
-      { name: "Dr. Richard Martinez", specialty: "Oncologist", email: "richard.martinez@hospital.com" },
-      { name: "Dr. Barbara Hernandez", specialty: "Oncologist", email: "barbara.hernandez@hospital.com" },
-      // Gastroenterologists (2)
-      { name: "Dr. Thomas Lopez", specialty: "Gastroenterologist", email: "thomas.lopez@hospital.com" },
-      { name: "Dr. Sarah Lee", specialty: "Gastroenterologist", email: "sarah.lee@hospital.com" },
-      // Pulmonologists (2)
-      { name: "Dr. Emily White", specialty: "Pulmonologist", email: "emily.white@hospital.com" },
-      { name: "Dr. Michael Brown", specialty: "Pulmonologist", email: "michael.brown@hospital.com" },
-      // Urologists (2)
-      { name: "Dr. David Wilson", specialty: "Urologist", email: "david.wilson@hospital.com" },
-      { name: "Dr. Jessica Taylor", specialty: "Urologist", email: "jessica.taylor@hospital.com" },
-      // Ophthalmologists (2)
-      { name: "Dr. Jennifer Anderson", specialty: "Ophthalmologist", email: "jennifer.anderson@hospital.com" },
-      { name: "Dr. Robert Thomas", specialty: "Ophthalmologist", email: "robert.thomas@hospital.com" },
-      // ENT Specialists (2)
-      { name: "Dr. William Jackson", specialty: "ENT Specialist", email: "william.jackson@hospital.com" },
-      { name: "Dr. Elizabeth Harris", specialty: "ENT Specialist", email: "elizabeth.harris@hospital.com" },
-      // Endocrinologists (2)
-      { name: "Dr. John Martin", specialty: "Endocrinologist", email: "john.martin@hospital.com" },
-      { name: "Dr. Linda Thompson", specialty: "Endocrinologist", email: "linda.thompson@hospital.com" },
-      // Rheumatologists (2)
-      { name: "Dr. Richard Garcia", specialty: "Rheumatologist", email: "richard.garcia@hospital.com" },
-      { name: "Dr. Barbara Martinez", specialty: "Rheumatologist", email: "barbara.martinez@hospital.com" },
-      // General Practitioners (2)
-      { name: "Dr. Thomas Robinson", specialty: "General Practitioner", email: "thomas.robinson@hospital.com" },
-      { name: "Dr. Sarah Clark", specialty: "General Practitioner", email: "sarah.clark@hospital.com" }
-    ];
-    for (const doc of doctors) {
-      await db.executeQuery({
-        sqlQuery: `INSERT INTO specialists (name, specialty, email) VALUES ('${doc.name}', '${doc.specialty}', '${doc.email}')`
-      });
-    }
-    const allSpecsRes = await db.executeQuery({ sqlQuery: "SELECT id FROM specialists" });
-    const getRows = (result) => {
-      if (Array.isArray(result)) return result;
-      if (result && result.results) {
-        if (Array.isArray(result.results)) return result.results;
-        if (typeof result.results === "string") {
-          try {
-            return JSON.parse(result.results);
-          } catch (e) {
-            console.error("Failed to parse SQL results:", e);
-            return [];
-          }
+        });
+        // 2. Clear existing data
+        await db.executeQuery({ sqlQuery: 'DELETE FROM slots' });
+        await db.executeQuery({ sqlQuery: 'DELETE FROM referrals' });
+        await db.executeQuery({ sqlQuery: 'DELETE FROM specialists' });
+        // 3. Insert Specialists (Fixed list for consistency)
+        const doctors = [
+            // Cardiologists (2)
+            { name: 'Dr. James Mitchell', specialty: 'Cardiologist', email: 'james.mitchell@hospital.com' },
+            { name: 'Dr. Sarah Rodriguez', specialty: 'Cardiologist', email: 'sarah.rodriguez@hospital.com' },
+            // Dermatologists (2)
+            { name: 'Dr. Emily Chen', specialty: 'Dermatologist', email: 'emily.chen@hospital.com' },
+            { name: 'Dr. Michael Smith', specialty: 'Dermatologist', email: 'michael.smith@hospital.com' },
+            // Orthopedists (2)
+            { name: 'Dr. David Johnson', specialty: 'Orthopedist', email: 'david.johnson@hospital.com' },
+            { name: 'Dr. Jessica Williams', specialty: 'Orthopedist', email: 'jessica.williams@hospital.com' },
+            // Neurologists (2)
+            { name: 'Dr. Jennifer Brown', specialty: 'Neurologist', email: 'jennifer.brown@hospital.com' },
+            { name: 'Dr. Robert Jones', specialty: 'Neurologist', email: 'robert.jones@hospital.com' },
+            // Pediatricians (2)
+            { name: 'Dr. William Garcia', specialty: 'Pediatrician', email: 'william.garcia@hospital.com' },
+            { name: 'Dr. Elizabeth Miller', specialty: 'Pediatrician', email: 'elizabeth.miller@hospital.com' },
+            // Psychiatrists (2)
+            { name: 'Dr. John Davis', specialty: 'Psychiatrist', email: 'john.davis@hospital.com' },
+            { name: 'Dr. Linda Rodriguez', specialty: 'Psychiatrist', email: 'linda.rodriguez@hospital.com' },
+            // Oncologists (2)
+            { name: 'Dr. Richard Martinez', specialty: 'Oncologist', email: 'richard.martinez@hospital.com' },
+            { name: 'Dr. Barbara Hernandez', specialty: 'Oncologist', email: 'barbara.hernandez@hospital.com' },
+            // Gastroenterologists (2)
+            { name: 'Dr. Thomas Lopez', specialty: 'Gastroenterologist', email: 'thomas.lopez@hospital.com' },
+            { name: 'Dr. Sarah Lee', specialty: 'Gastroenterologist', email: 'sarah.lee@hospital.com' },
+            // Pulmonologists (2)
+            { name: 'Dr. Emily White', specialty: 'Pulmonologist', email: 'emily.white@hospital.com' },
+            { name: 'Dr. Michael Brown', specialty: 'Pulmonologist', email: 'michael.brown@hospital.com' },
+            // Urologists (2)
+            { name: 'Dr. David Wilson', specialty: 'Urologist', email: 'david.wilson@hospital.com' },
+            { name: 'Dr. Jessica Taylor', specialty: 'Urologist', email: 'jessica.taylor@hospital.com' },
+            // Ophthalmologists (2)
+            { name: 'Dr. Jennifer Anderson', specialty: 'Ophthalmologist', email: 'jennifer.anderson@hospital.com' },
+            { name: 'Dr. Robert Thomas', specialty: 'Ophthalmologist', email: 'robert.thomas@hospital.com' },
+            // ENT Specialists (2)
+            { name: 'Dr. William Jackson', specialty: 'ENT Specialist', email: 'william.jackson@hospital.com' },
+            { name: 'Dr. Elizabeth Harris', specialty: 'ENT Specialist', email: 'elizabeth.harris@hospital.com' },
+            // Endocrinologists (2)
+            { name: 'Dr. John Martin', specialty: 'Endocrinologist', email: 'john.martin@hospital.com' },
+            { name: 'Dr. Linda Thompson', specialty: 'Endocrinologist', email: 'linda.thompson@hospital.com' },
+            // Rheumatologists (2)
+            { name: 'Dr. Richard Garcia', specialty: 'Rheumatologist', email: 'richard.garcia@hospital.com' },
+            { name: 'Dr. Barbara Martinez', specialty: 'Rheumatologist', email: 'barbara.martinez@hospital.com' },
+            // General Practitioners (2)
+            { name: 'Dr. Thomas Robinson', specialty: 'General Practitioner', email: 'thomas.robinson@hospital.com' },
+            { name: 'Dr. Sarah Clark', specialty: 'General Practitioner', email: 'sarah.clark@hospital.com' },
+        ];
+        // Insert all doctors
+        for (const doc of doctors) {
+            await db.executeQuery({
+                sqlQuery: `INSERT INTO specialists (name, specialty, email) VALUES ('${doc.name}', '${doc.specialty}', '${doc.email}')`
+            });
         }
-      }
-      if (result && Array.isArray(result.rows)) return result.rows;
-      return [];
-    };
-    const allSpecs = getRows(allSpecsRes);
-    const tomorrow = /* @__PURE__ */ new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    for (const doc of allSpecs) {
-      if (Math.random() > 0.5) continue;
-      for (let i = 0; i < 3; i++) {
-        const slotDate = new Date(tomorrow);
-        slotDate.setDate(slotDate.getDate() + Math.floor(Math.random() * 7));
-        slotDate.setHours(9 + Math.floor(Math.random() * 8), 0, 0, 0);
-        await db.executeQuery({ sqlQuery: `INSERT INTO slots (specialist_id, start_time) VALUES (${doc.id}, '${slotDate.toISOString()}')` });
-      }
+        // Get all IDs for slot generation
+        const allSpecsRes = await db.executeQuery({ sqlQuery: 'SELECT id FROM specialists' });
+        const getRows = (result) => {
+            if (Array.isArray(result))
+                return result;
+            if (result && result.results) {
+                if (Array.isArray(result.results))
+                    return result.results;
+                if (typeof result.results === 'string') {
+                    try {
+                        return JSON.parse(result.results);
+                    }
+                    catch (e) {
+                        console.error('Failed to parse SQL results:', e);
+                        return [];
+                    }
+                }
+            }
+            if (result && Array.isArray(result.rows))
+                return result.rows;
+            return [];
+        };
+        const allSpecs = getRows(allSpecsRes);
+        // 4. Insert Slots (Future dates) for random specialists
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        // Generate slots for 50% of doctors
+        for (const doc of allSpecs) {
+            if (Math.random() > 0.5)
+                continue;
+            for (let i = 0; i < 3; i++) {
+                const slotDate = new Date(tomorrow);
+                slotDate.setDate(slotDate.getDate() + Math.floor(Math.random() * 7)); // Random day in next week
+                slotDate.setHours(9 + Math.floor(Math.random() * 8), 0, 0, 0); // Random hour 9-17
+                await db.executeQuery({ sqlQuery: `INSERT INTO slots (specialist_id, start_time) VALUES (${doc.id}, '${slotDate.toISOString()}')` });
+            }
+        }
+        return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists` });
     }
-    return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists` });
-  } catch (error) {
-    console.error("Seed error:", error);
-    return c.json({ error: "Seeding failed: " + (error instanceof Error ? error.message : String(error)) }, 500);
-  }
-});
-app.get("/referrals", (c) => {
-  return c.json(MOCK_REFERRALS_LIST);
-});
-app.get("/referral/:id", (c) => {
-  const id = c.req.param("id");
-  if (id === "ref-001") {
-    return c.json(MOCK_REFERRAL_DETAILS);
-  }
-  return c.json({
-    success: false,
-    error: {
-      code: "REFERRAL_NOT_FOUND",
-      message: `Referral with ID '${id}' not found`,
-      statusCode: 404
+    catch (error) {
+        console.error('Seed error:', error);
+        return c.json({ error: 'Seeding failed: ' + (error instanceof Error ? error.message : String(error)) }, 500);
     }
-  }, 404);
 });
-app.get("/referral/:id/logs", (c) => {
-  const id = c.req.param("id");
-  if (id === "ref-001") {
-    return c.json(MOCK_REFERRAL_LOGS);
-  }
-  return c.json({
-    success: false,
-    error: {
-      code: "REFERRAL_NOT_FOUND",
-      message: `Referral with ID '${id}' not found`,
-      statusCode: 404
+// Get all referrals
+app.get('/referrals', async (c) => {
+    try {
+        const db = c.env.REFERRALS_DB;
+        const { page = '1', limit = '50', status, specialty, search } = c.req.query();
+        const pageNum = parseInt(page);
+        const limitNum = parseInt(limit);
+        const offset = (pageNum - 1) * limitNum;
+        // Build query
+        let query = 'SELECT * FROM referrals WHERE 1=1';
+        if (status) {
+            const statuses = status.split(',').map(s => `'${s.trim()}'`).join(',');
+            query += ` AND status IN (${statuses})`;
+        }
+        if (specialty) {
+            const specialties = specialty.split(',').map(s => `'${s.trim()}'`).join(',');
+            query += ` AND specialty IN (${specialties})`;
+        }
+        if (search) {
+            query += ` AND (patient_first_name LIKE '%${search}%' OR patient_last_name LIKE '%${search}%' OR patient_email LIKE '%${search}%')`;
+        }
+        // Get total count
+        const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as total');
+        const countResult = await db.executeQuery({ sqlQuery: countQuery });
+        // Helper to extract rows
+        const getRows = (result) => {
+            if (Array.isArray(result))
+                return result;
+            if (result && result.results) {
+                if (Array.isArray(result.results))
+                    return result.results;
+                if (typeof result.results === 'string') {
+                    try {
+                        return JSON.parse(result.results);
+                    }
+                    catch (e) {
+                        console.error('Failed to parse SQL results:', e);
+                        return [];
+                    }
+                }
+            }
+            if (result && Array.isArray(result.rows))
+                return result.rows;
+            return [];
+        };
+        const countRows = getRows(countResult);
+        const total = countRows[0]?.total || 0;
+        // Add pagination
+        query += ` ORDER BY created_at DESC LIMIT ${limitNum} OFFSET ${offset}`;
+        const result = await db.executeQuery({ sqlQuery: query });
+        const rows = getRows(result);
+        const referrals = rows.map((row) => ({
+            id: `ref-${row.id}`,
+            patientFirstName: row.patient_first_name,
+            patientLastName: row.patient_last_name,
+            patientEmail: row.patient_email,
+            specialty: row.specialty,
+            payer: row.payer,
+            status: row.status,
+            appointmentDate: row.appointment_date,
+            referralDate: row.referral_date,
+            noShowRisk: row.no_show_risk
+        }));
+        return c.json({
+            success: true,
+            data: {
+                referrals,
+                pagination: {
+                    page: pageNum,
+                    limit: limitNum,
+                    total,
+                    totalPages: Math.ceil(total / limitNum),
+                    hasNextPage: pageNum * limitNum < total,
+                    hasPreviousPage: pageNum > 1
+                }
+            },
+            message: 'Referrals retrieved successfully'
+        });
     }
-  }, 404);
+    catch (error) {
+        console.error('Get referrals error:', error);
+        return c.json({
+            success: false,
+            error: {
+                code: "DB_ERROR",
+                message: "Failed to retrieve referrals: " + (error instanceof Error ? error.message : String(error)),
+                statusCode: 500
+            }
+        }, 500);
+    }
 });
-app.post("/confirm", async (c) => {
-  try {
-    const body = await c.req.json();
-    const {
-      referralId,
-      patientName,
-      patientEmail,
-      patientPhone,
-      doctorName,
-      specialty,
-      appointmentDate,
-      appointmentTime,
-      facilityName,
-      facilityAddress
-    } = body;
-    if (!patientName || !doctorName) {
-      return c.json({
+// Get referral details
+app.get('/referral/:id', (c) => {
+    const id = c.req.param('id');
+    if (id === 'ref-001') {
+        return c.json(MOCK_REFERRAL_DETAILS);
+    }
+    return c.json({
         success: false,
-        error: "Missing required fields: patientName and doctorName"
-      }, 400);
+        error: {
+            code: "REFERRAL_NOT_FOUND",
+            message: `Referral with ID '${id}' not found`,
+            statusCode: 404
+        }
+    }, 404);
+});
+// Get referral logs
+app.get('/referral/:id/logs', (c) => {
+    const id = c.req.param('id');
+    if (id === 'ref-001') {
+        return c.json(MOCK_REFERRAL_LOGS);
     }
-    const apptDate = appointmentDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1e3).toISOString().split("T")[0];
-    const apptTime = appointmentTime || "10:00 AM";
-    const facility = facilityName || "Downtown Medical Center";
-    const address = facilityAddress || "123 Main Street, Suite 200, New York, NY 10001";
-    const phone = patientPhone || "+1-555-0123";
-    const email = patientEmail || "patient@email.com";
-    const smsMessage = `Hi ${patientName}! Your ${specialty || "medical"} appointment with ${doctorName} is confirmed for ${apptDate} at ${apptTime} at ${facility}. Location: ${address}. Questions? Call (555) 123-4567. Reply CANCEL to reschedule.`;
-    const emailSubject = `Appointment Confirmed - ${doctorName}`;
-    const emailBody = `Dear ${patientName},
+    return c.json({
+        success: false,
+        error: {
+            code: "REFERRAL_NOT_FOUND",
+            message: `Referral with ID '${id}' not found`,
+            statusCode: 404
+        }
+    }, 404);
+});
+// Patient Confirmation endpoint
+// Confirmation endpoint - Demo mode (shows what would be sent)
+app.post('/confirm', async (c) => {
+    try {
+        const body = await c.req.json();
+        const { referralId, patientName, patientEmail, patientPhone, doctorName, specialty, appointmentDate, appointmentTime, facilityName, facilityAddress } = body;
+        if (!patientName || !doctorName) {
+            return c.json({
+                success: false,
+                error: 'Missing required fields: patientName and doctorName'
+            }, 400);
+        }
+        // Format appointment datetime
+        const apptDate = appointmentDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]; // 2 days from now
+        const apptTime = appointmentTime || '10:00 AM';
+        const facility = facilityName || 'Downtown Medical Center';
+        const address = facilityAddress || '123 Main Street, Suite 200, New York, NY 10001';
+        const phone = patientPhone || '+1-555-0123';
+        const email = patientEmail || 'patient@email.com';
+        // Generate realistic SMS message
+        const smsMessage = `Hi ${patientName}! Your ${specialty || 'medical'} appointment with ${doctorName} is confirmed for ${apptDate} at ${apptTime} at ${facility}. Location: ${address}. Questions? Call (555) 123-4567. Reply CANCEL to reschedule.`;
+        // Generate realistic email
+        const emailSubject = `Appointment Confirmed - ${doctorName}`;
+        const emailBody = `Dear ${patientName},
 
 Your appointment has been successfully confirmed!
 
 APPOINTMENT DETAILS:
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Doctor:        ${doctorName}
-Specialty:     ${specialty || "General Practice"}
+Specialty:     ${specialty || 'General Practice'}
 Date & Time:   ${apptDate} at ${apptTime}
 Location:      ${facility}
 Address:       ${address}
 
 IMPORTANT REMINDERS:
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-\u2022 Please arrive 15 minutes early for check-in
-\u2022 Bring your insurance card and photo ID
-\u2022 Bring a list of current medications
-\u2022 If you need to cancel or reschedule, please call us at least 24 hours in advance
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Please arrive 15 minutes early for check-in
+• Bring your insurance card and photo ID
+• Bring a list of current medications
+• If you need to cancel or reschedule, please call us at least 24 hours in advance
 
 CONTACT INFORMATION:
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Phone: (555) 123-4567
 Email: appointments@hospital.com
 Portal: https://patient-portal.hospital.com
@@ -2461,81 +643,472 @@ Best regards,
 ${facility} Team
 
 ---
-Referral ID: ${referralId || "N/A"}
+Referral ID: ${referralId || 'N/A'}
 This is an automated confirmation. Please do not reply to this email.`;
+        // Return demo response
+        return c.json({
+            success: true,
+            confirmationSent: true,
+            referralId: referralId || 'demo-' + Date.now(),
+            notifications: {
+                sms: {
+                    to: phone,
+                    message: smsMessage,
+                    length: smsMessage.length,
+                    estimatedCost: '$0.0075'
+                },
+                email: {
+                    to: email,
+                    subject: emailSubject,
+                    body: emailBody,
+                    format: 'text/plain'
+                }
+            },
+            appointmentDetails: {
+                patient: patientName,
+                doctor: doctorName,
+                specialty: specialty || 'General Practice',
+                dateTime: `${apptDate} at ${apptTime}`,
+                location: facility,
+                address: address
+            },
+            method: 'DEMO_MODE',
+            message: 'In production, SMS and Email would be sent via Twilio/SendGrid',
+            timestamp: new Date().toISOString()
+        });
+    }
+    catch (error) {
+        console.error('Confirm error:', error);
+        return c.json({
+            success: false,
+            error: 'Confirmation failed: ' + (error instanceof Error ? error.message : String(error))
+        }, 500);
+    }
+});
+// === Basic API Routes ===
+app.get('/api/hello', (c) => {
+    return c.json({ message: 'Hello from Hono!' });
+});
+app.get('/api/hello/:name', (c) => {
+    const name = c.req.param('name');
+    return c.json({ message: `Hello, ${name}!` });
+});
+// Example POST endpoint
+app.post('/api/echo', async (c) => {
+    const body = await c.req.json();
+    return c.json({ received: body });
+});
+// === RPC Examples: Service calling Actor ===
+// Example: Call an actor method
+/*
+app.post('/api/actor-call', async (c) => {
+  try {
+    const { message, actorName } = await c.req.json();
+
+    if (!actorName) {
+      return c.json({ error: 'actorName is required' }, 400);
+    }
+
+    // Get actor namespace and create actor instance
+    // Note: Replace MY_ACTOR with your actual actor binding name
+    const actorNamespace = c.env.MY_ACTOR; // This would be bound in raindrop.manifest
+    const actorId = actorNamespace.idFromName(actorName);
+    const actor = actorNamespace.get(actorId);
+
+    // Call actor method (assuming actor has a 'processMessage' method)
+    const response = await actor.processMessage(message);
+
     return c.json({
       success: true,
-      confirmationSent: true,
-      referralId: referralId || "demo-" + Date.now(),
-      notifications: {
-        sms: {
-          to: phone,
-          message: smsMessage,
-          length: smsMessage.length,
-          estimatedCost: "$0.0075"
-        },
-        email: {
-          to: email,
-          subject: emailSubject,
-          body: emailBody,
-          format: "text/plain"
-        }
-      },
-      appointmentDetails: {
-        patient: patientName,
-        doctor: doctorName,
-        specialty: specialty || "General Practice",
-        dateTime: `${apptDate} at ${apptTime}`,
-        location: facility,
-        address
-      },
-      method: "DEMO_MODE",
-      message: "In production, SMS and Email would be sent via Twilio/SendGrid",
-      timestamp: (/* @__PURE__ */ new Date()).toISOString()
+      actorName,
+      response
     });
   } catch (error) {
-    console.error("Confirm error:", error);
     return c.json({
-      success: false,
-      error: "Confirmation failed: " + (error instanceof Error ? error.message : String(error))
+      error: 'Failed to call actor',
+      message: error instanceof Error ? error.message : 'Unknown error'
     }, 500);
   }
 });
-app.get("/api/hello", (c) => {
-  return c.json({ message: "Hello from Hono!" });
-});
-app.get("/api/hello/:name", (c) => {
-  const name = c.req.param("name");
-  return c.json({ message: `Hello, ${name}!` });
-});
-app.post("/api/echo", async (c) => {
-  const body = await c.req.json();
-  return c.json({ received: body });
-});
-app.get("/api/config", (c) => {
-  return c.json({
-    hasEnv: !!c.env,
-    availableBindings: {
-      // These would be true if the resources are bound in raindrop.manifest
-      // MY_ACTOR: !!c.env.MY_ACTOR,
-      // MY_SMARTBUCKET: !!c.env.MY_SMARTBUCKET,
-      // MY_CACHE: !!c.env.MY_CACHE,
-      // MY_QUEUE: !!c.env.MY_QUEUE,
-    }
-    // Example access to environment variables:
-    // MY_SECRET_VAR: c.env.MY_SECRET_VAR // This would be undefined if not set
-  });
-});
-var api_default = class extends Service {
-  async fetch(request) {
-    return app.fetch(request, this.env);
-  }
-};
+*/
+// Example: Get actor state
+/*
+app.get('/api/actor-state/:actorName', async (c) => {
+  try {
+    const actorName = c.req.param('actorName');
 
-// <stdin>
-var stdin_default = api_default;
-export {
-  cors,
-  stdin_default as default,
-  determineSpecialty
-};
+    // Get actor instance
+    const actorNamespace = c.env.MY_ACTOR;
+    const actorId = actorNamespace.idFromName(actorName);
+    const actor = actorNamespace.get(actorId);
+
+    // Get actor state (assuming actor has a 'getState' method)
+    const state = await actor.getState();
+
+    return c.json({
+      success: true,
+      actorName,
+      state
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Failed to get actor state',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// === SmartBucket Examples ===
+// Example: Upload file to SmartBucket
+/*
+app.post('/api/upload', async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    const description = formData.get('description') as string;
+
+    if (!file) {
+      return c.json({ error: 'No file provided' }, 400);
+    }
+
+    // Upload to SmartBucket (Replace MY_SMARTBUCKET with your binding name)
+    const smartbucket = c.env.MY_SMARTBUCKET;
+    const arrayBuffer = await file.arrayBuffer();
+
+    const putOptions: BucketPutOptions = {
+      httpMetadata: {
+        contentType: file.type || 'application/octet-stream',
+      },
+      customMetadata: {
+        originalName: file.name,
+        size: file.size.toString(),
+        description: description || '',
+        uploadedAt: new Date().toISOString()
+      }
+    };
+
+    const result = await smartbucket.put(file.name, new Uint8Array(arrayBuffer), putOptions);
+
+    return c.json({
+      success: true,
+      message: 'File uploaded successfully',
+      key: result.key,
+      size: result.size,
+      etag: result.etag
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Failed to upload file',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// Example: Get file from SmartBucket
+/*
+app.get('/api/file/:filename', async (c) => {
+  try {
+    const filename = c.req.param('filename');
+
+    // Get file from SmartBucket
+    const smartbucket = c.env.MY_SMARTBUCKET;
+    const file = await smartbucket.get(filename);
+
+    if (!file) {
+      return c.json({ error: 'File not found' }, 404);
+    }
+
+    return new Response(file.body, {
+      headers: {
+        'Content-Type': file.httpMetadata?.contentType || 'application/octet-stream',
+        'Content-Disposition': `attachment; filename="${filename}"`,
+        'X-Object-Size': file.size.toString(),
+        'X-Object-ETag': file.etag,
+        'X-Object-Uploaded': file.uploaded.toISOString(),
+      }
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Failed to retrieve file',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// Example: Search SmartBucket documents
+/*
+app.post('/api/search', async (c) => {
+  try {
+    const { query, page = 1, pageSize = 10 } = await c.req.json();
+
+    if (!query) {
+      return c.json({ error: 'Query is required' }, 400);
+    }
+
+    const smartbucket = c.env.MY_SMARTBUCKET;
+
+    // For initial search
+    if (page === 1) {
+      const requestId = `search-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+      const results = await smartbucket.search({
+        input: query,
+        requestId
+      });
+
+      return c.json({
+        success: true,
+        message: 'Search completed',
+        query,
+        results: results.results,
+        pagination: {
+          ...results.pagination,
+          requestId
+        }
+      });
+    } else {
+      // For paginated results
+      const { requestId } = await c.req.json();
+      if (!requestId) {
+        return c.json({ error: 'Request ID required for pagination' }, 400);
+      }
+
+      const paginatedResults = await smartbucket.getPaginatedResults({
+        requestId,
+        page,
+        pageSize
+      });
+
+      return c.json({
+        success: true,
+        message: 'Paginated results',
+        query,
+        results: paginatedResults.results,
+        pagination: paginatedResults.pagination
+      });
+    }
+  } catch (error) {
+    return c.json({
+      error: 'Search failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// Example: Chunk search for finding specific sections
+/*
+app.post('/api/chunk-search', async (c) => {
+  try {
+    const { query } = await c.req.json();
+
+    if (!query) {
+      return c.json({ error: 'Query is required' }, 400);
+    }
+
+    const smartbucket = c.env.MY_SMARTBUCKET;
+    const requestId = `chunk-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const results = await smartbucket.chunkSearch({
+      input: query,
+      requestId
+    });
+
+    return c.json({
+      success: true,
+      message: 'Chunk search completed',
+      query,
+      results: results.results
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Chunk search failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// Example: Document chat/Q&A
+/*
+app.post('/api/document-chat', async (c) => {
+  try {
+    const { objectId, query } = await c.req.json();
+
+    if (!objectId || !query) {
+      return c.json({ error: 'objectId and query are required' }, 400);
+    }
+
+    const smartbucket = c.env.MY_SMARTBUCKET;
+    const requestId = `chat-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    const response = await smartbucket.documentChat({
+      objectId,
+      input: query,
+      requestId
+    });
+
+    return c.json({
+      success: true,
+      message: 'Document chat completed',
+      objectId,
+      query,
+      answer: response.answer
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Document chat failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// Example: List objects in bucket
+/*
+app.get('/api/list', async (c) => {
+  try {
+    const url = new URL(c.req.url);
+    const prefix = url.searchParams.get('prefix') || undefined;
+    const limit = url.searchParams.get('limit') ? parseInt(url.searchParams.get('limit')!) : undefined;
+
+    const smartbucket = c.env.MY_SMARTBUCKET;
+
+    const listOptions: BucketListOptions = {
+      prefix,
+      limit
+    };
+
+    const result = await smartbucket.list(listOptions);
+
+    return c.json({
+      success: true,
+      objects: result.objects.map(obj => ({
+        key: obj.key,
+        size: obj.size,
+        uploaded: obj.uploaded,
+        etag: obj.etag
+      })),
+      truncated: result.truncated,
+      cursor: result.truncated ? result.cursor : undefined
+    });
+  } catch (error) {
+    return c.json({
+      error: 'List failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// === KV Cache Examples ===
+// Example: Store data in KV cache
+/*
+app.post('/api/cache', async (c) => {
+  try {
+    const { key, value, ttl } = await c.req.json();
+
+    if (!key || value === undefined) {
+      return c.json({ error: 'key and value are required' }, 400);
+    }
+
+    const cache = c.env.MY_CACHE;
+
+    const putOptions: KvCachePutOptions = {};
+    if (ttl) {
+      putOptions.expirationTtl = ttl;
+    }
+
+    await cache.put(key, JSON.stringify(value), putOptions);
+
+    return c.json({
+      success: true,
+      message: 'Data cached successfully',
+      key
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Cache put failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// Example: Get data from KV cache
+/*
+app.get('/api/cache/:key', async (c) => {
+  try {
+    const key = c.req.param('key');
+
+    const cache = c.env.MY_CACHE;
+
+    const getOptions: KvCacheGetOptions<'json'> = {
+      type: 'json'
+    };
+
+    const value = await cache.get(key, getOptions);
+
+    if (value === null) {
+      return c.json({ error: 'Key not found in cache' }, 404);
+    }
+
+    return c.json({
+      success: true,
+      key,
+      value
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Cache get failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// === Queue Examples ===
+// Example: Send message to queue
+/*
+app.post('/api/queue/send', async (c) => {
+  try {
+    const { message, delaySeconds } = await c.req.json();
+
+    if (!message) {
+      return c.json({ error: 'message is required' }, 400);
+    }
+
+    const queue = c.env.MY_QUEUE;
+
+    const sendOptions: QueueSendOptions = {};
+    if (delaySeconds) {
+      sendOptions.delaySeconds = delaySeconds;
+    }
+
+    await queue.send(message, sendOptions);
+
+    return c.json({
+      success: true,
+      message: 'Message sent to queue'
+    });
+  } catch (error) {
+    return c.json({
+      error: 'Queue send failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
+  }
+});
+*/
+// === Environment Variable Examples ===
+app.get('/api/config', (c) => {
+    return c.json({
+        hasEnv: !!c.env,
+        availableBindings: {
+        // These would be true if the resources are bound in raindrop.manifest
+        // MY_ACTOR: !!c.env.MY_ACTOR,
+        // MY_SMARTBUCKET: !!c.env.MY_SMARTBUCKET,
+        // MY_CACHE: !!c.env.MY_CACHE,
+        // MY_QUEUE: !!c.env.MY_QUEUE,
+        },
+        // Example access to environment variables:
+        // MY_SECRET_VAR: c.env.MY_SECRET_VAR // This would be undefined if not set
+    });
+});
+export default class extends Service {
+    async fetch(request) {
+        return app.fetch(request, this.env);
+    }
+}
