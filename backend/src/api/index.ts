@@ -342,6 +342,19 @@ app.post('/orchestrate', async (c) => {
 app.post('/seed', async (c) => {
   try {
     const db = c.env.REFERRALS_DB as any;
+    // allow calling with { clearReferralsOnly: true } to delete only referrals (keep specialists)
+    let body = null;
+    try {
+      body = await c.req.json();
+    } catch (e) {
+      // no body sent
+    }
+
+    if (body && body.clearReferralsOnly) {
+      // Only delete referrals (patient data) — do NOT remove specialists
+      await db.executeQuery({ sqlQuery: 'DELETE FROM referrals' });
+      return c.json({ message: 'Referrals cleared (specialists preserved)' });
+    }
 
     // 1. Create Tables (SQLite Syntax)
     await db.executeQuery({

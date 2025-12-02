@@ -122,8 +122,17 @@ function determineSpecialty(reason: string): string {
 }
 
 app.post('/seed', (req, res) => {
+    // support body { clearReferralsOnly: true } to remove only referrals and preserve specialists
+    const { clearReferralsOnly } = req.body || {};
+    if (clearReferralsOnly) {
+        referrals = [];
+        return res.json({ message: 'Referrals cleared (specialists preserved)' });
+    }
+
+    // default behavior: full local seed (clear referrals and specialists)
     referrals = [];
-    res.json({ message: 'Database seeded (cleared)' });
+    specialists = [];
+    res.json({ message: 'Database seeded (cleared all referrals and specialists)' });
 });
 
 
