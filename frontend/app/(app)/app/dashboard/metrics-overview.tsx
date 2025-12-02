@@ -17,25 +17,25 @@ export const MetricsOverview = ({ data }: MetricsOverviewProps) => {
   const metrics = [
     {
       title: "Total Referrals",
-      value: data.totalReferrals,
+      value: data.totalReferrals ?? 0,
       icon: Users,
       description: "All time",
     },
     {
       title: "Active Referrals",
-      value: data.activeReferrals,
+      value: data.activeReferrals ?? 0,
       icon: Activity,
       description: "Currently in progress",
     },
     {
       title: "Pending Review",
-      value: data.pendingReview,
+      value: data.pendingReview ?? 0,
       icon: Clock,
       description: "Awaiting action",
     },
     {
       title: "Success Rate",
-      value: `${data.successRate}%`,
+      value: `${data.successRate ?? 0}%`,
       icon: TrendingUp,
       description: "Completion rate",
     },

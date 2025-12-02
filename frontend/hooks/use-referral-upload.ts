@@ -3,13 +3,15 @@ import {
   orchestrate,
   uploadReferralFile,
 } from "@/lib/actions/referrals";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { toast } from "sonner";
 
 interface ExtractionFormData {
   patientName: string;
   dateOfBirth: string;
+  patientPhoneNumber: string;
+  patientEmail: string;
   referralReason: string;
   insuranceProvider: string;
 }
@@ -19,6 +21,8 @@ interface ExtractionResponse {
   data?: {
     patientName?: string;
     dateOfBirth?: string;
+    patientPhoneNumber?: string;
+    patientEmail?: string;
     referralReason?: string;
     insuranceProvider?: string;
   };
@@ -39,6 +43,8 @@ interface OrchestrationResponse {
     availableSlots?: string[];
     referralId?: string;
     insuranceStatus?: string;
+    patientEmail?: string;
+    patientPhoneNumber?: string;
   };
   message?: string;
 }
@@ -70,6 +76,7 @@ interface ConfirmationResponse {
 }
 
 export const useReferralUpload = () => {
+  const queryClient = useQueryClient();
   const [orchestrationData, setOrchestrationData] =
     React.useState<OrchestrationResponse | null>(null);
 
@@ -128,17 +135,11 @@ export const useReferralUpload = () => {
         appointmentTime = "10:00 AM";
       }
 
-      // Generate patient email and phone
-      const patientEmail = `${patientData.patientName
-        .toLowerCase()
-        .replace(/\s+/g, ".")}@example.com`;
-      const patientPhone = "+1-555-0100";
-
       const confirmPayload = {
         referralId: doctorMatch.referralId || "",
         patientName: patientData.patientName,
-        patientEmail,
-        patientPhone,
+        patientEmail: patientData.patientEmail,
+        patientPhone: patientData.patientPhoneNumber,
         doctorName: doctorMatch.assignedDoctor || "",
         specialty: doctorMatch.specialist || "",
         appointmentDate,
@@ -155,6 +156,8 @@ export const useReferralUpload = () => {
     },
     onSuccess: () => {
       toast.success("Appointment confirmed successfully!");
+      // Refetch referrals table data
+      queryClient.invalidateQueries({ queryKey: ["referrals"] });
     },
     onError: (error: Error) => {
       toast.error(`Confirmation failed: ${error.message}`);
@@ -171,6 +174,8 @@ export const useReferralUpload = () => {
         patientName: patientData.patientName,
         referralReason: patientData.referralReason,
         insuranceProvider: patientData.insuranceProvider,
+        patientEmail: patientData.patientEmail,
+        patientPhoneNumber: patientData.patientPhoneNumber,
       });
 
       if (!result.success) {

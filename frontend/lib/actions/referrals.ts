@@ -67,7 +67,6 @@ export async function uploadReferralFile(
     const result = await response.json();
 
     console.log(result);
-    
 
     return {
       success: true,
@@ -85,8 +84,12 @@ export const orchestrate = async (patientData: {
   patientName: string;
   referralReason: string;
   insuranceProvider: string;
+  patientEmail: string;
+  patientPhoneNumber: string;
 }) => {
   try {
+    console.log(JSON.stringify(patientData, null, 2));
+
     const response = await fetch(`${process.env.BACKEND_BASE}/orchestrate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
