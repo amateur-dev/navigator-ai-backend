@@ -1,1 +1,3 @@
 node_modules
+.DS_Store
+vultr-extraction-service/deployment.tar.gz

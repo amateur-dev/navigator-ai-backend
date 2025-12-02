@@ -21,7 +21,6 @@ const upload = multer({
 // Initialize CEREBRAS client
 const cerebras = new Cerebras({
     apiKey: process.env.CEREBRAS_API_KEY,
-    warmTCPConnection: false // Serverless-friendly
 });
 
 // Health check endpoint
@@ -74,14 +73,19 @@ Extract the following information and return it as a JSON object:
 {
   "patientName": "Full patient name (first and last)",
   "dateOfBirth": "Patient's date of birth in YYYY-MM-DD format",
+  "patientPhoneNumber": "Patient's phone number",
   "referralReason": "The medical condition, diagnosis, or symptoms mentioned",
-  "insuranceProvider": "Insurance provider/payer company name"
+  "insuranceProvider": "Insurance provider/payer company name",
+  "specialty": "The medical specialty being referred to",
+  "urgency": "The urgency level (e.g., routine, urgent)",
+  "providerName": "The referring physician's name",
+  "plan": "The insurance plan name or policy number"
 }
 
 Instructions:
 - Extract EXACTLY what you see in the text above
 - For dates, convert any format to YYYY-MM-DD (e.g., "July 22, 1985" becomes "1985-07-22")
-- Look for keywords like "Name:", "DOB:", "Patient:", "Insurance:", "Diagnosis:", "Reason:"
+- Look for keywords like "Name:", "DOB:", "Patient:", "Insurance:", "Diagnosis:", "Reason:", "Phone:"
 - If a field is not found, use "Unknown"
 - Return ONLY valid JSON, no markdown or explanation`;
 

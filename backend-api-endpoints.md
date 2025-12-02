@@ -4,16 +4,17 @@ This document outlines all the backend endpoints required for the Better Start a
 
 ## Table of Contents
 - [1. POST /upload](#1-post-upload)
-- [2. POST /orchestrate](#2-post-orchestrate)
-- [3. GET /referrals](#3-get-referrals)
-- [4. GET /referral/:id](#4-get-referralid)
-- [5. GET /referral/:id/logs](#5-get-referralidlogs)
+- [2. POST /extract](#2-post-extract)
+- [3. POST /orchestrate](#3-post-orchestrate)
+- [4. GET /referrals](#4-get-referrals)
+- [5. GET /referral/:id](#5-get-referralid)
+- [6. GET /referral/:id/logs](#6-get-referralidlogs)
 
 ---
 
 ## 1. POST /upload
 
-**Description:** Accepts a PDF file (referral document) and returns the parsed information as a JSON object back to the client for confirmation. This endpoint uses OCR/AI to extract structured data from the referral form.
+**Description:** Accepts a PDF file (referral document) and uploads it to the secure storage (SmartBucket). Returns a document ID that is used for subsequent extraction and processing steps.
 
 **Endpoint:** `POST /upload`
 
@@ -39,11 +40,75 @@ curl -X POST http://localhost:3000/upload \
 ```json
 {
   "success": true,
+  "message": "File uploaded successfully",
+  "id": "doc-1764639473874-j456tppf2j",
+  "uploadedAt": "2025-12-02T01:37:55.731Z"
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `success` | boolean | Whether the upload was successful |
+| `message` | string | Success message |
+| `id` | string | Unique identifier for the uploaded document |
+| `uploadedAt` | string | Timestamp of upload (ISO 8601) |
+
+### Error Response
+
+**Status Code:** `400 Bad Request` | `413 Payload Too Large` | `415 Unsupported Media Type` | `500 Internal Server Error`
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "INVALID_FILE_TYPE",
+    "message": "Only PDF files are accepted",
+    "statusCode": 415
+  }
+}
+```
+
+---
+
+## 2. POST /extract
+
+**Description:** Triggers the AI extraction process for a previously uploaded document. It retrieves the file using the `id`, sends it to the extraction service, and returns structured patient and referral data.
+
+**Endpoint:** `POST /extract`
+
+**Content-Type:** `application/json`
+
+### Request
+
+**Request Body:**
+```json
+{
+  "id": "doc-1764639473874-j456tppf2j"
+}
+```
+
+### Request Fields
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `id` | string | Yes | The document ID returned from the `/upload` endpoint |
+
+### Response
+
+**Status Code:** `200 OK`
+
+**Response Body:**
+```json
+{
+  "success": true,
   "data": {
     "extractedData": {
       "patientFirstName": "Sarah",
       "patientLastName": "Johnson",
       "patientEmail": "sarah.johnson@email.com",
+      "patientPhoneNumber": "555-0123-4567",
       "age": 58,
       "specialty": "Cardiology",
       "payer": "Blue Cross Blue Shield",
@@ -56,7 +121,7 @@ curl -X POST http://localhost:3000/upload \
       "reason": "Chest pain and irregular heartbeat"
     },
     "confidence": 0.95,
-    "documentId": "doc-12345678",
+    "documentId": "doc-1764639473874-j456tppf2j",
     "needsReview": false,
     "warnings": []
   },
@@ -68,11 +133,12 @@ curl -X POST http://localhost:3000/upload \
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `success` | boolean | Whether the upload was successful |
+| `success` | boolean | Whether the extraction was successful |
 | `data.extractedData` | object | Extracted patient and referral information |
 | `data.extractedData.patientFirstName` | string | Patient's first name |
 | `data.extractedData.patientLastName` | string | Patient's last name |
 | `data.extractedData.patientEmail` | string | Patient's email address |
+| `data.extractedData.patientPhoneNumber` | string | Patient's phone number (or "Not Available") |
 | `data.extractedData.age` | number | Patient's age |
 | `data.extractedData.specialty` | string | Medical specialty for referral |
 | `data.extractedData.payer` | string | Insurance payer name |
@@ -91,35 +157,24 @@ curl -X POST http://localhost:3000/upload \
 
 ### Error Response
 
-**Status Code:** `400 Bad Request` | `413 Payload Too Large` | `415 Unsupported Media Type` | `500 Internal Server Error`
+**Status Code:** `400 Bad Request` | `404 Not Found` | `500 Internal Server Error`
 
 ```json
 {
   "success": false,
   "error": {
-    "code": "INVALID_FILE_TYPE",
-    "message": "Only PDF files are accepted",
-    "statusCode": 415
+    "code": "EXTRACTION_FAILED",
+    "message": "Failed to extract data via Vultr",
+    "statusCode": 500
   }
 }
 ```
 
-### Error Codes
-
-| Code | HTTP Status | Description |
-|------|-------------|-------------|
-| `NO_FILE_PROVIDED` | 400 | No file was included in the request |
-| `INVALID_FILE_TYPE` | 415 | File is not a PDF |
-| `FILE_TOO_LARGE` | 413 | File exceeds 10MB limit |
-| `OCR_FAILED` | 500 | Failed to process the document |
-| `EXTRACTION_FAILED` | 500 | Failed to extract structured data |
-| `LOW_CONFIDENCE` | 422 | Extraction confidence too low, manual review required |
-
 ---
 
-## 2. POST /orchestrate
+## 3. POST /orchestrate
 
-**Description:** Accepts the JSON object from the `/upload` endpoint (potentially with user corrections) and orchestrates the agentic process to handle the referral workflow. This includes eligibility verification, prior authorization, scheduling, and patient communication.
+**Description:** Accepts the JSON object from the `/extract` endpoint (potentially with user corrections) and orchestrates the agentic process to handle the referral workflow. This includes eligibility verification, prior authorization, scheduling, and patient communication.
 
 **Endpoint:** `POST /orchestrate`
 
@@ -135,6 +190,7 @@ curl -X POST http://localhost:3000/upload \
     "patientFirstName": "Sarah",
     "patientLastName": "Johnson",
     "patientEmail": "sarah.johnson@email.com",
+    "patientPhoneNumber": "555-0123-4567",
     "age": 58,
     "specialty": "Cardiology",
     "payer": "Blue Cross Blue Shield",
@@ -156,7 +212,7 @@ curl -X POST http://localhost:3000/upload \
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `documentId` | string | Yes | ID of the uploaded document from `/upload` |
-| `referralData` | object | Yes | Referral information (from upload or user-corrected) |
+| `referralData` | object | Yes | Referral information (from extraction or user-corrected) |
 | `autoSchedule` | boolean | No | Whether to automatically schedule appointment (default: true) |
 | `sendNotifications` | boolean | No | Whether to send patient notifications (default: true) |
 
@@ -271,7 +327,7 @@ curl -X POST http://localhost:3000/upload \
 
 ---
 
-## 3. GET /referrals
+## 4. GET /referrals
 
 **Description:** Returns the list of all referrals with basic information. Supports filtering, sorting, and pagination.
 
