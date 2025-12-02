@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "1e1e1cafb2a6685962bc505bf71db83bde6513aa"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "ed00b671e5b2effb0d449724a3b00daec90f064f"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -2079,6 +2079,8 @@ app.get("/referrals", async (c) => {
       id: `ref-${row.id}`,
       patientFirstName: row.patient_name ? row.patient_name.split(" ")[0] : "Unknown",
       patientLastName: row.patient_name ? row.patient_name.split(" ").slice(1).join(" ") : "",
+      // Pull phone number from row if available (column name: patient_phone) and expose explicitly
+      patientPhoneNumber: row.patient_phone || null,
       patientEmail: "unknown@example.com",
       specialty: "Unknown",
       // Placeholder until we join
@@ -2147,6 +2149,7 @@ app.get("/referral/:id", async (c) => {
           id: `ref-${row.id}`,
           patientFirstName: row.patient_name ? row.patient_name.split(" ")[0] : "Unknown",
           patientLastName: row.patient_name ? row.patient_name.split(" ").slice(1).join(" ") : "",
+          patientPhoneNumber: row.patient_phone || null,
           patientEmail: "unknown@example.com",
           specialty: "Unknown",
           payer: row.insurance_provider || "Unknown",

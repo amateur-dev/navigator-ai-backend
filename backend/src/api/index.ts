@@ -5,13 +5,8 @@ import { QueueSendOptions } from '@liquidmetal-ai/raindrop-framework';
 import { KvCachePutOptions, KvCacheGetOptions } from '@liquidmetal-ai/raindrop-framework';
 import { BucketPutOptions, BucketListOptions } from '@liquidmetal-ai/raindrop-framework';
 import { Env } from './raindrop.gen';
-import {
-  MOCK_UPLOAD_RESPONSE,
-  MOCK_ORCHESTRATION_RESPONSE,
-  MOCK_REFERRALS_LIST,
-  MOCK_REFERRAL_DETAILS,
-  MOCK_REFERRAL_LOGS
-} from './mockData';
+// NOTE: API responses should not be static mocks. The mock data file remains for tests, but
+// production/dev endpoints should produce live/dynamic responses. Only 'specialists' remain mocked.
 
 // Exported for testing/mocking
 export function determineSpecialty(referralReason: string): string {
@@ -546,6 +541,8 @@ app.get('/referrals', async (c) => {
       id: `ref-${row.id}`,
       patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
       patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
+      // Pull phone number from row if available (column name: patient_phone) and expose explicitly
+      patientPhoneNumber: row.patient_phone || null,
       patientEmail: 'unknown@example.com',
       specialty: 'Unknown', // Placeholder until we join
       payer: row.insurance_provider || 'Unknown',
@@ -618,6 +615,7 @@ app.get('/referral/:id', async (c) => {
           id: `ref-${row.id}`,
           patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
           patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
+          patientPhoneNumber: row.patient_phone || null,
           patientEmail: 'unknown@example.com',
           specialty: 'Unknown',
           payer: row.insurance_provider || 'Unknown',

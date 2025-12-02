@@ -12,13 +12,7 @@ app.get('/ping', (req, res) => {
 import multer from 'multer';
 import Raindrop from '@liquidmetal-ai/lm-raindrop';
 import fs from 'fs';
-import {
-    MOCK_UPLOAD_RESPONSE,
-    MOCK_ORCHESTRATION_RESPONSE,
-    MOCK_REFERRALS_LIST,
-    MOCK_REFERRAL_DETAILS,
-    MOCK_REFERRAL_LOGS
-} from './api/mockData.js';
+// NOTE: mocked API responses removed per request. Only `specialists` (doctors) remain mocked.
 
 const upload = multer({ dest: 'uploads/' });
 const client = new Raindrop({ apiKey: process.env.RAINDROP_API_KEY || 'mock-key' });
@@ -34,7 +28,19 @@ app.post('/upload', upload.single('file'), async (req: any, res) => {
         console.log(`File uploaded: ${req.file.originalname} (${req.file.size} bytes)`);
         console.log(`Saved to: ${req.file.path}`);
 
-        res.status(200).json(MOCK_UPLOAD_RESPONSE);
+        // Return a dynamic response — document id and upload metadata
+        const response = {
+            success: true,
+            data: {
+                documentId: req.file.filename || req.file.path,
+                originalName: req.file.originalname,
+                size: req.file.size,
+                uploadedAt: new Date().toISOString()
+            },
+            message: 'File uploaded successfully'
+        };
+
+        res.status(200).json(response);
     } catch (error) {
         console.error('Upload error:', error);
         res.status(500).json({
@@ -49,7 +55,10 @@ app.post('/upload', upload.single('file'), async (req: any, res) => {
 });
 
 // In-memory storage for local development
+// In-memory referrals storage for local development. Start empty — no mocks for responses.
 let referrals: any[] = [];
+// In-memory logs store for referrals
+const referralLogs: Record<string, any[]> = {};
 let specialists = [
     { id: 1, name: 'Dr. James Mitchell', specialty: 'Cardiologist' },
     { id: 2, name: 'Dr. Emily Chen', specialty: 'Dermatologist' }
@@ -71,35 +80,49 @@ app.post('/extract', async (req, res) => {
             });
         }
 
-        // For local development, return mock extracted data
-        // In production, this would use SmartBucket AI extraction
-        const mockExtractedData = {
-            patientFirstName: "Jason",
-            patientLastName: "Miller",
-            patientEmail: "jason.miller@email.com",
-            age: 45,
-            specialty: "Cardiology",
-            payer: "Anthem Blue Cross",
-            plan: "Blue Cross PPO",
-            urgency: "urgent",
-            appointmentDate: null,
-            referralDate: "2025-11-10T14:00:00Z",
-            providerName: "Dr. James Mitchell",
-            facilityName: "Downtown Medical Center",
-            reason: "Suspected ADHD and increasing anxiety behaviors"
-        };
+        // For local development this endpoint should call an external extraction service
+        // or return an error if no extraction integration is configured. We will attempt
+        // to call the configured VULTR extraction service and return its result.
+        // If no extraction service is configured, respond with 501 Not Implemented.
 
-        return res.json({
-            success: true,
-            data: {
-                extractedData: mockExtractedData,
-                confidence: 0.95,
-                documentId: id,
-                needsReview: false,
-                warnings: []
-            },
-            message: "Document processed successfully"
-        });
+        const VULTR_URL = process.env.VULTR_EXTRACTION_URL;
+        if (!VULTR_URL) {
+            return res.status(501).json({
+                success: false,
+                error: {
+                    code: 'EXTRACTION_NOT_CONFIGURED',
+                    message: 'Extraction service not configured for this environment',
+                    statusCode: 501
+                }
+            });
+        }
+
+        // If configured, call the external extraction service
+        try {
+            // Attempt to read the file path saved by multer
+            const filePath = req.file?.path;
+            if (!filePath || !fs.existsSync(filePath)) {
+                return res.status(404).json({ success: false, error: { code: 'FILE_NOT_FOUND', message: 'Uploaded file not found', statusCode: 404 } });
+            }
+
+            const fileBuffer = fs.readFileSync(filePath);
+            const FormData = require('form-data');
+            const formData = new FormData();
+            formData.append('file', fileBuffer, req.file.originalname);
+
+            const fetch = require('node-fetch');
+            const r = await fetch(VULTR_URL, { method: 'POST', body: formData });
+            const json = await r.json();
+            if (!r.ok || !json.success) {
+                throw new Error(json?.error || `Service returned status ${r.status}`);
+            }
+
+            // Return extraction result as-is (no mock wrapping)
+            return res.status(200).json(json);
+        } catch (ex) {
+            console.error('Extraction RPC error:', ex);
+            return res.status(500).json({ success: false, error: { code: 'EXTRACTION_FAILED', message: String(ex), statusCode: 500 } });
+        }
     } catch (error) {
         console.error('Extract error:', error);
         return res.status(500).json({
@@ -167,6 +190,7 @@ app.post('/orchestrate', async (req, res) => {
             id: `ref-${Date.now()}`,
             patientFirstName,
             patientLastName,
+            patientPhoneNumber: referralData.patientPhoneNumber || null,
             patientEmail,
             age,
             specialty,
@@ -183,6 +207,10 @@ app.post('/orchestrate', async (req, res) => {
         };
 
         referrals.push(newReferral);
+        // create an initial log for the new referral
+        referralLogs[newReferral.id] = [
+            { id: `log-${Date.now()}`, event: 'Referral Created', type: 'system', timestamp: new Date().toISOString(), user: 'system', description: 'Referral created' }
+        ];
 
         res.status(200).json({
             success: true,
@@ -206,14 +234,19 @@ app.post('/orchestrate', async (req, res) => {
 });
 
 app.get('/referrals', (req, res) => {
+    // Ensure every referral returned has an explicit patientPhoneNumber field
+    const out = referrals
+        .map(r => ({ ...r, patientPhoneNumber: r.patientPhoneNumber ?? null }))
+        .sort((a, b) => new Date((b.referralDate || '')).getTime() - new Date((a.referralDate || '')).getTime());
+
     res.status(200).json({
         success: true,
         data: {
-            referrals: referrals.sort((a, b) => new Date(b.referralDate).getTime() - new Date(a.referralDate).getTime()),
+            referrals: out,
             pagination: {
                 page: 1,
                 limit: 50,
-                total: referrals.length,
+                total: out.length,
                 totalPages: 1,
                 hasNextPage: false,
                 hasPreviousPage: false
@@ -228,7 +261,9 @@ app.get('/referral/:id', (req, res) => {
     const referral = referrals.find(r => r.id === id);
 
     if (referral) {
-        res.status(200).json({ success: true, data: referral });
+        // Explicitly include patientPhoneNumber in the response (may be null)
+        const out = { ...referral, patientPhoneNumber: referral.patientPhoneNumber ?? null };
+        res.status(200).json({ success: true, data: out });
     } else {
         res.status(404).json({
             success: false,
@@ -243,14 +278,16 @@ app.get('/referral/:id', (req, res) => {
 
 app.get('/referral/:id/logs', (req, res) => {
     const { id } = req.params;
-    // Return empty logs for now
-    res.status(200).json({
-        success: true,
-        data: {
-            referralId: id,
-            logs: []
-        }
-    });
+    const found = referrals.find(r => r.id === id);
+    if (!found) {
+        return res.status(404).json({
+            success: false,
+            error: { code: 'REFERRAL_NOT_FOUND', message: `Referral with ID '${id}' not found`, statusCode: 404 }
+        });
+    }
+
+    const logs = referralLogs[id] || [];
+    res.status(200).json({ success: true, data: { referralId: id, logs } });
 });
 
 app.get('/metrics', (req, res) => {
