@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "c869ef69dd9953be64a2373e381f0828639cd380"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "1e1e1cafb2a6685962bc505bf71db83bde6513aa"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1918,6 +1918,15 @@ app.post("/orchestrate", async (c) => {
 app.post("/seed", async (c) => {
   try {
     const db = c.env.REFERRALS_DB;
+    let body = null;
+    try {
+      body = await c.req.json();
+    } catch (e) {
+    }
+    if (body && body.clearReferralsOnly) {
+      await db.executeQuery({ sqlQuery: "DELETE FROM referrals" });
+      return c.json({ message: "Referrals cleared (specialists preserved)" });
+    }
     await db.executeQuery({
       sqlQuery: `
       CREATE TABLE IF NOT EXISTS specialists (
