@@ -25,7 +25,7 @@ async function runE2ETest() {
 
         // 2. Reset / Seed DB to known state
         console.log('\n2️⃣  Seeding database to known clean state...');
-        const seedRes = await fetch(`${API_URL}/seed`, { method: 'POST' });
+        const seedRes = await fetch(`${API_URL}/seed`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clearReferralsOnly: true }) });
         if (!seedRes.ok) {
             throw new Error(`Seed failed: ${seedRes.status} ${await seedRes.text()}`);
         }
