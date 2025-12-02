@@ -55,6 +55,64 @@ let specialists = [
     { id: 2, name: 'Dr. Emily Chen', specialty: 'Dermatologist' }
 ];
 
+// Mock extraction endpoint for local development
+app.post('/extract', async (req, res) => {
+    try {
+        const { id } = req.body;
+
+        if (!id) {
+            return res.status(400).json({ 
+                success: false,
+                error: {
+                    code: "MISSING_DOCUMENT_ID",
+                    message: "Document ID is required",
+                    statusCode: 400
+                }
+            });
+        }
+
+        // For local development, return mock extracted data
+        // In production, this would use SmartBucket AI extraction
+        const mockExtractedData = {
+            patientFirstName: "Jason",
+            patientLastName: "Miller",
+            patientEmail: "jason.miller@email.com",
+            age: 45,
+            specialty: "Cardiology",
+            payer: "Anthem Blue Cross",
+            plan: "Blue Cross PPO",
+            urgency: "urgent",
+            appointmentDate: null,
+            referralDate: "2025-11-10T14:00:00Z",
+            providerName: "Dr. James Mitchell",
+            facilityName: "Downtown Medical Center",
+            reason: "Suspected ADHD and increasing anxiety behaviors"
+        };
+
+        return res.json({
+            success: true,
+            data: {
+                extractedData: mockExtractedData,
+                confidence: 0.95,
+                documentId: id,
+                needsReview: false,
+                warnings: []
+            },
+            message: "Document processed successfully"
+        });
+    } catch (error) {
+        console.error('Extract error:', error);
+        return res.status(500).json({
+            success: false,
+            error: {
+                code: "EXTRACTION_FAILED",
+                message: "Failed to extract data from document",
+                statusCode: 500
+            }
+        });
+    }
+});
+
 // Helper to determine specialty
 function determineSpecialty(reason: string): string {
     const r = reason.toLowerCase();
@@ -67,6 +125,7 @@ app.post('/seed', (req, res) => {
     referrals = [];
     res.json({ message: 'Database seeded (cleared)' });
 });
+
 
 app.post('/orchestrate', async (req, res) => {
     try {
@@ -175,8 +234,14 @@ app.get('/referral/:id', (req, res) => {
 
 app.get('/referral/:id/logs', (req, res) => {
     const { id } = req.params;
-    // Return mock logs for now
-    res.status(200).json(MOCK_REFERRAL_LOGS);
+    // Return empty logs for now
+    res.status(200).json({
+        success: true,
+        data: {
+            referralId: id,
+            logs: []
+        }
+    });
 });
 
 app.get('/metrics', (req, res) => {

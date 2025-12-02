@@ -128,105 +128,105 @@ app.post('/extract', async (c) => {
       return c.json({ error: 'Document not found' }, 404);
     }
 
-    // Use SmartBucket's documentChat for AI extraction  
-    const extractionPrompt = `Extract patient information from this medical referral document.
+    // Call Vultr Extraction Service
+    // Using nip.io to avoid Cloudflare "Direct IP Access" error (1003)
+    const VULTR_URL = 'http://139.180.220.93.nip.io:3001/extract';
+    console.log(`Calling Vultr Extraction Service at ${VULTR_URL}...`);
 
-Return ONLY a JSON object with these exact fields:
-{
-  "patientName": "Full patient name (first and last)",
-  "dateOfBirth": "YYYY-MM-DD format", 
-  "referralReason": "Medical condition or symptoms",
-  "insuranceProvider": "Insurance company name"
-}
+    const arrayBuffer = await pdfObject.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
+    const formData = new FormData();
+    formData.append('file', blob, 'referral.pdf');
 
-Instructions:
-- Read the document carefully
-- Extract EXACTLY what the document says
-- Convert dates to YYYY-MM-DD format
-- If a field is missing, use "Unknown"
-- Return ONLY valid JSON, no markdown or explanation`;
-
-    const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-
-    // Retry logic for documentChat (may need time to index)
-    let attempts = 0;
-    const maxAttempts = 3;
-    let aiResponse;
-
-    while (attempts < maxAttempts) {
-      try {
-        aiResponse = await smartbucket.documentChat({
-          objectId: id,
-          input: extractionPrompt,
-          requestId: `${requestId}-attempt-${attempts}`
-        });
-
-        // Check if we got a valid response
-        if (aiResponse && aiResponse.answer) {
-          const answerText = typeof aiResponse.answer === 'string' ? aiResponse.answer : JSON.stringify(aiResponse.answer);
-          if (answerText.trim()) {
-            console.log('SmartBucket AI Response:', answerText);
-            aiResponse.answer = answerText; // Normalize to string
-            break;
-          }
-        }
-
-        // Empty response, wait and retry
-        attempts++;
-        if (attempts < maxAttempts) {
-          console.log(`Empty response, retrying (${attempts}/${maxAttempts})...`);
-          await new Promise(resolve => setTimeout(resolve, 3000)); // Wait 3 seconds
-        }
-      } catch (chatError) {
-        console.error(`documentChat attempt ${attempts + 1} failed:`, chatError);
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise(resolve => setTimeout(resolve, 3000));
-        } else {
-          throw chatError;
-        }
-      }
-    }
-
-    if (!aiResponse || !aiResponse.answer) {
-      return c.json({
-        error: 'AI extraction returned empty response after retries. Document may still be indexing.',
-        suggestion: 'Try again in 10-15 seconds'
-      }, 503);
-    }
-
-    // Ensure answer is a string
-    const answerText = typeof aiResponse.answer === 'string' ? aiResponse.answer : JSON.stringify(aiResponse.answer);
-
-    // Parse the AI response
     let extractedData;
     try {
-      // Clean up potential markdown
-      const cleanJson = answerText.replace(/```json\n|\n```/g, '').replace(/```/g, '').trim();
-      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        extractedData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error('No JSON found in AI response');
+      const vultrResponse = await fetch(VULTR_URL, {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Navigator-Backend/1.0',
+          'Accept': 'application/json'
+        },
+        body: formData
+      });
+
+      if (!vultrResponse.ok) {
+        const errorText = await vultrResponse.text();
+        throw new Error(`Vultr service returned ${vultrResponse.status} ${vultrResponse.statusText}: ${errorText}`);
       }
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', answerText);
+
+      const vultrResult = await vultrResponse.json();
+      if (!vultrResult.success) {
+        throw new Error(vultrResult.error || 'Unknown error from Vultr');
+      }
+      
+      extractedData = vultrResult.data;
+      console.log('Vultr Extraction Result:', extractedData);
+
+    } catch (vultrError) {
+      console.error('Vultr Extraction Failed:', vultrError);
       return c.json({
-        error: 'Failed to parse AI response',
-        rawResponse: answerText
+        success: false,
+        error: {
+          code: "EXTRACTION_FAILED",
+          message: "Failed to extract data via Vultr: " + (vultrError instanceof Error ? vultrError.message : String(vultrError)),
+          statusCode: 500
+        }
       }, 500);
     }
 
-    console.log('Extracted Data:', extractedData);
-    return c.json(extractedData);
+    // Return standardized response format matching /upload endpoint pattern
+    return c.json({
+      success: true,
+      data: {
+        extractedData: {
+          patientFirstName: extractedData.patientName?.split(' ')[0] || 'Unknown',
+          patientLastName: extractedData.patientName?.split(' ').slice(1).join(' ') || 'Unknown',
+          patientEmail: 'unknown@example.com', // Not in doc
+          patientPhoneNumber: extractedData.patientPhoneNumber || 'Not Available',
+          age: extractedData.dateOfBirth ? calculateAge(extractedData.dateOfBirth) : null,
+          specialty: determineSpecialty(extractedData.referralReason || ''), // Use our logic or the extracted one? User asked for format. Let's use our logic for consistency or the extracted one if valid.
+          payer: extractedData.insuranceProvider || 'Unknown',
+          plan: extractedData.plan || 'Unknown',
+          urgency: extractedData.urgency || 'routine',
+          appointmentDate: null,
+          referralDate: new Date().toISOString(),
+          providerName: extractedData.providerName || 'Unknown',
+          facilityName: 'Unknown',
+          reason: extractedData.referralReason || 'Unknown'
+        },
+        confidence: 1.0, // Deterministic extraction
+        documentId: id,
+        needsReview: false,
+        warnings: []
+      },
+      message: "Document processed successfully"
+    });
 
   } catch (error) {
     console.error('Extract error:', error);
     return c.json({
-      error: 'Extraction failed: ' + (error instanceof Error ? error.message : String(error))
+      success: false,
+      error: {
+        code: "EXTRACTION_FAILED",
+        message: "Failed to extract data: " + (error instanceof Error ? error.message : String(error)),
+        statusCode: 500
+      }
     }, 500);
   }
 });
+
+// Helper function to calculate age from date of birth
+function calculateAge(dateOfBirth: string): number | null {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  const today = new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+    age--;
+  }
+  return age;
+}
 
 // Workflow Orchestration endpoint
 app.post('/orchestrate', async (c) => {
@@ -499,40 +499,157 @@ app.post('/seed', async (c) => {
 });
 
 // Get all referrals
-app.get('/referrals', (c) => {
-  return c.json(MOCK_REFERRALS_LIST);
+app.get('/referrals', async (c) => {
+  try {
+    const db = c.env.REFERRALS_DB as any;
+    
+    // Execute query
+    const result = await db.executeQuery({ 
+      sqlQuery: 'SELECT * FROM referrals ORDER BY created_at DESC' 
+    });
+
+    // Helper to extract rows
+    const getRows = (result: any) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === 'string') {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            console.error('Failed to parse SQL results:', e);
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+
+    const rows = getRows(result);
+
+    // Map to API format
+    const referrals = rows.map((row: any) => ({
+      id: `ref-${row.id}`,
+      patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
+      patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
+      patientEmail: 'unknown@example.com',
+      specialty: 'Unknown', // Placeholder until we join
+      payer: row.insurance_provider || 'Unknown',
+      status: row.status || 'Pending',
+      appointmentDate: null,
+      referralDate: row.created_at,
+      noShowRisk: 0
+    }));
+
+    return c.json({
+      success: true,
+      data: {
+        referrals: referrals,
+        pagination: {
+          page: 1,
+          limit: 50,
+          total: referrals.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPreviousPage: false
+        }
+      },
+      message: 'Referrals retrieved successfully'
+    });
+  } catch (error) {
+    console.error('Fetch referrals error:', error);
+    return c.json({
+      success: false,
+      error: {
+        code: "FETCH_FAILED",
+        message: "Failed to fetch referrals",
+        statusCode: 500
+      }
+    }, 500);
+  }
 });
 
 // Get referral details
-app.get('/referral/:id', (c) => {
+app.get('/referral/:id', async (c) => {
   const id = c.req.param('id');
-  if (id === 'ref-001') {
-    return c.json(MOCK_REFERRAL_DETAILS);
-  }
-  return c.json({
-    success: false,
-    error: {
-      code: "REFERRAL_NOT_FOUND",
-      message: `Referral with ID '${id}' not found`,
-      statusCode: 404
+  
+  try {
+    const db = c.env.REFERRALS_DB as any;
+    // Extract numeric ID from "ref-123"
+    const numericId = id.replace('ref-', '');
+    
+    const result = await db.executeQuery({ 
+      sqlQuery: `SELECT * FROM referrals WHERE id = ${numericId}` 
+    });
+
+    const getRows = (result: any) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === 'string') {
+          try { return JSON.parse(result.results); } catch (e) { return []; }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+
+    const rows = getRows(result);
+
+    if (rows.length > 0) {
+      const row = rows[0];
+      return c.json({
+        success: true,
+        data: {
+          id: `ref-${row.id}`,
+          patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
+          patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
+          patientEmail: 'unknown@example.com',
+          specialty: 'Unknown',
+          payer: row.insurance_provider || 'Unknown',
+          status: row.status || 'Pending',
+          appointmentDate: null,
+          referralDate: row.created_at,
+          noShowRisk: 0,
+          // Add other fields as needed
+          reason: row.condition
+        }
+      });
     }
-  }, 404);
+
+    return c.json({
+      success: false,
+      error: {
+        code: "REFERRAL_NOT_FOUND",
+        message: `Referral with ID '${id}' not found`,
+        statusCode: 404
+      }
+    }, 404);
+
+  } catch (error) {
+    console.error('Fetch referral error:', error);
+    return c.json({
+      success: false,
+      error: {
+        code: "FETCH_FAILED",
+        message: "Failed to fetch referral details",
+        statusCode: 500
+      }
+    }, 500);
+  }
 });
 
 // Get referral logs
 app.get('/referral/:id/logs', (c) => {
-  const id = c.req.param('id');
-  if (id === 'ref-001') {
-    return c.json(MOCK_REFERRAL_LOGS);
-  }
+  // For now, return empty logs or implement DB logs table
   return c.json({
-    success: false,
-    error: {
-      code: "REFERRAL_NOT_FOUND",
-      message: `Referral with ID '${id}' not found`,
-      statusCode: 404
+    success: true,
+    data: {
+      referralId: c.req.param('id'),
+      logs: []
     }
-  }, 404);
+  });
 });
 
 // Patient Confirmation endpoint

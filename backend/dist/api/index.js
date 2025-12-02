@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "c816eec3cc3baca9c22b92eb4ee9173115838009"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "c869ef69dd9953be64a2373e381f0828639cd380"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1659,340 +1659,6 @@ var logger = (fn = console.log) => {
   };
 };
 
-// src/api/mockData.ts
-var MOCK_REFERRALS_LIST = {
-  success: true,
-  data: {
-    referrals: [
-      {
-        id: "ref-001",
-        patientFirstName: "Sarah",
-        patientLastName: "Johnson",
-        patientEmail: "sarah.johnson@email.com",
-        specialty: "Cardiology",
-        payer: "Blue Cross Blue Shield",
-        status: "Scheduled",
-        appointmentDate: "2025-11-22T10:30:00Z",
-        referralDate: "2025-11-10T14:00:00Z",
-        noShowRisk: 15
-      },
-      {
-        id: "ref-002",
-        patientFirstName: "Michael",
-        patientLastName: "Chen",
-        patientEmail: "michael.chen@email.com",
-        specialty: "Orthopedics",
-        payer: "UnitedHealthcare",
-        status: "Pending",
-        appointmentDate: "2025-11-25T14:00:00Z",
-        referralDate: "2025-11-15T09:30:00Z",
-        noShowRisk: 42
-      }
-    ],
-    pagination: {
-      page: 1,
-      limit: 50,
-      total: 62,
-      totalPages: 2,
-      hasNextPage: true,
-      hasPreviousPage: false
-    }
-  },
-  message: "Referrals retrieved successfully"
-};
-var MOCK_REFERRAL_DETAILS = {
-  success: true,
-  data: {
-    id: "ref-001",
-    patientFirstName: "Sarah",
-    patientLastName: "Johnson",
-    patientEmail: "sarah.johnson@email.com",
-    age: 58,
-    specialty: "Cardiology",
-    payer: "Blue Cross Blue Shield",
-    plan: "Blue Cross PPO Plus",
-    status: "Scheduled",
-    urgency: "urgent",
-    appointmentDate: "2025-11-22T10:30:00Z",
-    referralDate: "2025-11-10T14:00:00Z",
-    noShowRisk: 15,
-    providerName: "Dr. James Mitchell",
-    facilityName: "Downtown Medical Center",
-    reason: "Chest pain and irregular heartbeat",
-    steps: [
-      {
-        id: "step-1",
-        label: "Intake",
-        status: "completed",
-        completedAt: "2025-11-10T14:15:00Z",
-        description: "Initial referral received and processed"
-      },
-      {
-        id: "step-2",
-        label: "Eligibility",
-        status: "completed",
-        completedAt: "2025-11-11T09:30:00Z",
-        description: "Insurance eligibility verified"
-      },
-      {
-        id: "step-3",
-        label: "Prior Authorization",
-        status: "completed",
-        completedAt: "2025-11-13T16:45:00Z",
-        description: "PA approved for specialist consultation"
-      },
-      {
-        id: "step-4",
-        label: "Scheduled",
-        status: "current",
-        completedAt: "2025-11-15T11:20:00Z",
-        description: "Appointment scheduled with provider"
-      },
-      {
-        id: "step-5",
-        label: "Completed",
-        status: "upcoming",
-        description: "Appointment attended"
-      }
-    ],
-    actionLog: [
-      {
-        id: "log-1",
-        event: "Referral Created",
-        type: "system",
-        timestamp: "2025-11-10T14:00:00Z",
-        user: "Dr. Emma Wilson",
-        description: "Referral created by primary care physician",
-        details: {
-          source: "EHR Integration"
-        }
-      },
-      {
-        id: "log-2",
-        event: "Intake Completed",
-        type: "user",
-        timestamp: "2025-11-10T14:15:00Z",
-        user: "Linda Martinez",
-        description: "Patient demographics and insurance information verified"
-      },
-      {
-        id: "log-3",
-        event: "Eligibility Check Started",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:00:00Z",
-        user: "System",
-        description: "Automated eligibility verification initiated"
-      },
-      {
-        id: "log-4",
-        event: "Eligibility Verified",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:30:00Z",
-        user: "System",
-        description: "Insurance active, benefits confirmed",
-        details: {
-          copay: "$40",
-          coinsurance: "20%"
-        }
-      },
-      {
-        id: "log-5",
-        event: "PA Request Submitted",
-        type: "pa",
-        timestamp: "2025-11-12T10:15:00Z",
-        user: "Sarah Chen",
-        description: "Prior authorization request submitted to payer"
-      },
-      {
-        id: "log-6",
-        event: "PA Approved",
-        type: "pa",
-        timestamp: "2025-11-13T16:45:00Z",
-        user: "Blue Cross Blue Shield",
-        description: "Prior authorization approved - Authorization #PA-2025-8847",
-        details: {
-          authNumber: "PA-2025-8847",
-          validUntil: "2026-02-13"
-        }
-      },
-      {
-        id: "log-7",
-        event: "Appointment Scheduled",
-        type: "scheduling",
-        timestamp: "2025-11-15T11:20:00Z",
-        user: "Mike Johnson",
-        description: "Appointment scheduled for Nov 22, 2025 at 10:30 AM"
-      },
-      {
-        id: "log-8",
-        event: "Confirmation SMS Sent",
-        type: "message",
-        timestamp: "2025-11-15T11:25:00Z",
-        user: "System",
-        description: "Appointment confirmation sent via SMS"
-      },
-      {
-        id: "log-9",
-        event: "Reminder Email Sent",
-        type: "message",
-        timestamp: "2025-11-19T09:00:00Z",
-        user: "System",
-        description: "3-day appointment reminder sent via email"
-      },
-      {
-        id: "log-10",
-        event: "Patient Confirmed Attendance",
-        type: "message",
-        timestamp: "2025-11-19T14:30:00Z",
-        user: "Sarah Johnson",
-        description: "Patient replied 'YES' to confirmation request"
-      }
-    ],
-    messages: [
-      {
-        id: "msg-1",
-        channel: "SMS",
-        content: "Hi Sarah, your cardiology appointment with Dr. James Mitchell is scheduled for Nov 22 at 10:30 AM at Downtown Medical Center. Please reply YES to confirm or CANCEL to reschedule.",
-        timestamp: "2025-11-15T11:25:00Z",
-        status: "delivered",
-        direction: "outbound",
-        recipient: "sarah.johnson@email.com"
-      },
-      {
-        id: "msg-2",
-        channel: "SMS",
-        content: "YES",
-        timestamp: "2025-11-19T14:30:00Z",
-        status: "delivered",
-        direction: "inbound"
-      },
-      {
-        id: "msg-3",
-        channel: "Email",
-        content: "Dear Sarah Johnson,\\n\\nThis is a reminder that you have an appointment scheduled:\\n\\nDate: Friday, November 22, 2025\\nTime: 10:30 AM\\nProvider: Dr. James Mitchell\\nLocation: Downtown Medical Center, 123 Main St\\nSpecialty: Cardiology\\n\\nPlease bring your insurance card and a valid ID. If you need to reschedule, please call us at (555) 123-4567.\\n\\nThank you!",
-        timestamp: "2025-11-19T09:00:00Z",
-        status: "delivered",
-        direction: "outbound",
-        recipient: "sarah.johnson@email.com"
-      }
-    ]
-  },
-  message: "Referral details retrieved successfully"
-};
-var MOCK_REFERRAL_LOGS = {
-  success: true,
-  data: {
-    referralId: "ref-001",
-    logs: [
-      {
-        id: "log-10",
-        event: "Patient Confirmed Attendance",
-        type: "message",
-        timestamp: "2025-11-19T14:30:00Z",
-        user: "Sarah Johnson",
-        description: "Patient replied 'YES' to confirmation request",
-        details: null
-      },
-      {
-        id: "log-9",
-        event: "Reminder Email Sent",
-        type: "message",
-        timestamp: "2025-11-19T09:00:00Z",
-        user: "System",
-        description: "3-day appointment reminder sent via email",
-        details: null
-      },
-      {
-        id: "log-8",
-        event: "Confirmation SMS Sent",
-        type: "message",
-        timestamp: "2025-11-15T11:25:00Z",
-        user: "System",
-        description: "Appointment confirmation sent via SMS",
-        details: null
-      },
-      {
-        id: "log-7",
-        event: "Appointment Scheduled",
-        type: "scheduling",
-        timestamp: "2025-11-15T11:20:00Z",
-        user: "Mike Johnson",
-        description: "Appointment scheduled for Nov 22, 2025 at 10:30 AM",
-        details: null
-      },
-      {
-        id: "log-6",
-        event: "PA Approved",
-        type: "pa",
-        timestamp: "2025-11-13T16:45:00Z",
-        user: "Blue Cross Blue Shield",
-        description: "Prior authorization approved - Authorization #PA-2025-8847",
-        details: {
-          authNumber: "PA-2025-8847",
-          validUntil: "2026-02-13"
-        }
-      },
-      {
-        id: "log-5",
-        event: "PA Request Submitted",
-        type: "pa",
-        timestamp: "2025-11-12T10:15:00Z",
-        user: "Sarah Chen",
-        description: "Prior authorization request submitted to payer",
-        details: null
-      },
-      {
-        id: "log-4",
-        event: "Eligibility Verified",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:30:00Z",
-        user: "System",
-        description: "Insurance active, benefits confirmed",
-        details: {
-          copay: "$40",
-          coinsurance: "20%"
-        }
-      },
-      {
-        id: "log-3",
-        event: "Eligibility Check Started",
-        type: "eligibility",
-        timestamp: "2025-11-11T09:00:00Z",
-        user: "System",
-        description: "Automated eligibility verification initiated",
-        details: null
-      },
-      {
-        id: "log-2",
-        event: "Intake Completed",
-        type: "user",
-        timestamp: "2025-11-10T14:15:00Z",
-        user: "Linda Martinez",
-        description: "Patient demographics and insurance information verified",
-        details: null
-      },
-      {
-        id: "log-1",
-        event: "Referral Created",
-        type: "system",
-        timestamp: "2025-11-10T14:00:00Z",
-        user: "Dr. Emma Wilson",
-        description: "Referral created by primary care physician",
-        details: {
-          source: "EHR Integration"
-        }
-      }
-    ],
-    pagination: {
-      limit: 100,
-      offset: 0,
-      total: 10,
-      hasMore: false
-    }
-  },
-  message: "Logs retrieved successfully"
-};
-
 // src/api/index.ts
 function determineSpecialty(referralReason) {
   let specialty = "General Practitioner";
@@ -2078,88 +1744,95 @@ app.post("/extract", async (c) => {
     if (!pdfObject) {
       return c.json({ error: "Document not found" }, 404);
     }
-    const extractionPrompt = `Extract patient information from this medical referral document.
-
-Return ONLY a JSON object with these exact fields:
-{
-  "patientName": "Full patient name (first and last)",
-  "dateOfBirth": "YYYY-MM-DD format", 
-  "referralReason": "Medical condition or symptoms",
-  "insuranceProvider": "Insurance company name"
-}
-
-Instructions:
-- Read the document carefully
-- Extract EXACTLY what the document says
-- Convert dates to YYYY-MM-DD format
-- If a field is missing, use "Unknown"
-- Return ONLY valid JSON, no markdown or explanation`;
-    const requestId = `extract-${Date.now()}-${Math.random().toString(36).substring(7)}`;
-    let attempts = 0;
-    const maxAttempts = 3;
-    let aiResponse;
-    while (attempts < maxAttempts) {
-      try {
-        aiResponse = await smartbucket.documentChat({
-          objectId: id,
-          input: extractionPrompt,
-          requestId: `${requestId}-attempt-${attempts}`
-        });
-        if (aiResponse && aiResponse.answer) {
-          const answerText2 = typeof aiResponse.answer === "string" ? aiResponse.answer : JSON.stringify(aiResponse.answer);
-          if (answerText2.trim()) {
-            console.log("SmartBucket AI Response:", answerText2);
-            aiResponse.answer = answerText2;
-            break;
-          }
-        }
-        attempts++;
-        if (attempts < maxAttempts) {
-          console.log(`Empty response, retrying (${attempts}/${maxAttempts})...`);
-          await new Promise((resolve) => setTimeout(resolve, 3e3));
-        }
-      } catch (chatError) {
-        console.error(`documentChat attempt ${attempts + 1} failed:`, chatError);
-        attempts++;
-        if (attempts < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, 3e3));
-        } else {
-          throw chatError;
-        }
-      }
-    }
-    if (!aiResponse || !aiResponse.answer) {
-      return c.json({
-        error: "AI extraction returned empty response after retries. Document may still be indexing.",
-        suggestion: "Try again in 10-15 seconds"
-      }, 503);
-    }
-    const answerText = typeof aiResponse.answer === "string" ? aiResponse.answer : JSON.stringify(aiResponse.answer);
+    const VULTR_URL = "http://139.180.220.93.nip.io:3001/extract";
+    console.log(`Calling Vultr Extraction Service at ${VULTR_URL}...`);
+    const arrayBuffer = await pdfObject.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+    const formData = new FormData();
+    formData.append("file", blob, "referral.pdf");
     let extractedData;
     try {
-      const cleanJson = answerText.replace(/```json\n|\n```/g, "").replace(/```/g, "").trim();
-      const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        extractedData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in AI response");
+      const vultrResponse = await fetch(VULTR_URL, {
+        method: "POST",
+        headers: {
+          "User-Agent": "Navigator-Backend/1.0",
+          "Accept": "application/json"
+        },
+        body: formData
+      });
+      if (!vultrResponse.ok) {
+        const errorText = await vultrResponse.text();
+        throw new Error(`Vultr service returned ${vultrResponse.status} ${vultrResponse.statusText}: ${errorText}`);
       }
-    } catch (parseError) {
-      console.error("Failed to parse AI response:", answerText);
+      const vultrResult = await vultrResponse.json();
+      if (!vultrResult.success) {
+        throw new Error(vultrResult.error || "Unknown error from Vultr");
+      }
+      extractedData = vultrResult.data;
+      console.log("Vultr Extraction Result:", extractedData);
+    } catch (vultrError) {
+      console.error("Vultr Extraction Failed:", vultrError);
       return c.json({
-        error: "Failed to parse AI response",
-        rawResponse: answerText
+        success: false,
+        error: {
+          code: "EXTRACTION_FAILED",
+          message: "Failed to extract data via Vultr: " + (vultrError instanceof Error ? vultrError.message : String(vultrError)),
+          statusCode: 500
+        }
       }, 500);
     }
-    console.log("Extracted Data:", extractedData);
-    return c.json(extractedData);
+    return c.json({
+      success: true,
+      data: {
+        extractedData: {
+          patientFirstName: extractedData.patientName?.split(" ")[0] || "Unknown",
+          patientLastName: extractedData.patientName?.split(" ").slice(1).join(" ") || "Unknown",
+          patientEmail: "unknown@example.com",
+          // Not in doc
+          patientPhoneNumber: extractedData.patientPhoneNumber || "Not Available",
+          age: extractedData.dateOfBirth ? calculateAge(extractedData.dateOfBirth) : null,
+          specialty: determineSpecialty(extractedData.referralReason || ""),
+          // Use our logic or the extracted one? User asked for format. Let's use our logic for consistency or the extracted one if valid.
+          payer: extractedData.insuranceProvider || "Unknown",
+          plan: extractedData.plan || "Unknown",
+          urgency: extractedData.urgency || "routine",
+          appointmentDate: null,
+          referralDate: (/* @__PURE__ */ new Date()).toISOString(),
+          providerName: extractedData.providerName || "Unknown",
+          facilityName: "Unknown",
+          reason: extractedData.referralReason || "Unknown"
+        },
+        confidence: 1,
+        // Deterministic extraction
+        documentId: id,
+        needsReview: false,
+        warnings: []
+      },
+      message: "Document processed successfully"
+    });
   } catch (error) {
     console.error("Extract error:", error);
     return c.json({
-      error: "Extraction failed: " + (error instanceof Error ? error.message : String(error))
+      success: false,
+      error: {
+        code: "EXTRACTION_FAILED",
+        message: "Failed to extract data: " + (error instanceof Error ? error.message : String(error)),
+        statusCode: 500
+      }
     }, 500);
   }
 });
+function calculateAge(dateOfBirth) {
+  if (!dateOfBirth) return null;
+  const dob = new Date(dateOfBirth);
+  const today = /* @__PURE__ */ new Date();
+  let age = today.getFullYear() - dob.getFullYear();
+  const monthDiff = today.getMonth() - dob.getMonth();
+  if (monthDiff < 0 || monthDiff === 0 && today.getDate() < dob.getDate()) {
+    age--;
+  }
+  return age;
+}
 app.post("/orchestrate", async (c) => {
   try {
     const body = await c.req.json();
@@ -2370,36 +2043,141 @@ app.post("/seed", async (c) => {
     return c.json({ error: "Seeding failed: " + (error instanceof Error ? error.message : String(error)) }, 500);
   }
 });
-app.get("/referrals", (c) => {
-  return c.json(MOCK_REFERRALS_LIST);
-});
-app.get("/referral/:id", (c) => {
-  const id = c.req.param("id");
-  if (id === "ref-001") {
-    return c.json(MOCK_REFERRAL_DETAILS);
+app.get("/referrals", async (c) => {
+  try {
+    const db = c.env.REFERRALS_DB;
+    const result = await db.executeQuery({
+      sqlQuery: "SELECT * FROM referrals ORDER BY created_at DESC"
+    });
+    const getRows = (result2) => {
+      if (Array.isArray(result2)) return result2;
+      if (result2 && result2.results) {
+        if (Array.isArray(result2.results)) return result2.results;
+        if (typeof result2.results === "string") {
+          try {
+            return JSON.parse(result2.results);
+          } catch (e) {
+            console.error("Failed to parse SQL results:", e);
+            return [];
+          }
+        }
+      }
+      if (result2 && Array.isArray(result2.rows)) return result2.rows;
+      return [];
+    };
+    const rows = getRows(result);
+    const referrals = rows.map((row) => ({
+      id: `ref-${row.id}`,
+      patientFirstName: row.patient_name ? row.patient_name.split(" ")[0] : "Unknown",
+      patientLastName: row.patient_name ? row.patient_name.split(" ").slice(1).join(" ") : "",
+      patientEmail: "unknown@example.com",
+      specialty: "Unknown",
+      // Placeholder until we join
+      payer: row.insurance_provider || "Unknown",
+      status: row.status || "Pending",
+      appointmentDate: null,
+      referralDate: row.created_at,
+      noShowRisk: 0
+    }));
+    return c.json({
+      success: true,
+      data: {
+        referrals,
+        pagination: {
+          page: 1,
+          limit: 50,
+          total: referrals.length,
+          totalPages: 1,
+          hasNextPage: false,
+          hasPreviousPage: false
+        }
+      },
+      message: "Referrals retrieved successfully"
+    });
+  } catch (error) {
+    console.error("Fetch referrals error:", error);
+    return c.json({
+      success: false,
+      error: {
+        code: "FETCH_FAILED",
+        message: "Failed to fetch referrals",
+        statusCode: 500
+      }
+    }, 500);
   }
-  return c.json({
-    success: false,
-    error: {
-      code: "REFERRAL_NOT_FOUND",
-      message: `Referral with ID '${id}' not found`,
-      statusCode: 404
+});
+app.get("/referral/:id", async (c) => {
+  const id = c.req.param("id");
+  try {
+    const db = c.env.REFERRALS_DB;
+    const numericId = id.replace("ref-", "");
+    const result = await db.executeQuery({
+      sqlQuery: `SELECT * FROM referrals WHERE id = ${numericId}`
+    });
+    const getRows = (result2) => {
+      if (Array.isArray(result2)) return result2;
+      if (result2 && result2.results) {
+        if (Array.isArray(result2.results)) return result2.results;
+        if (typeof result2.results === "string") {
+          try {
+            return JSON.parse(result2.results);
+          } catch (e) {
+            return [];
+          }
+        }
+      }
+      if (result2 && Array.isArray(result2.rows)) return result2.rows;
+      return [];
+    };
+    const rows = getRows(result);
+    if (rows.length > 0) {
+      const row = rows[0];
+      return c.json({
+        success: true,
+        data: {
+          id: `ref-${row.id}`,
+          patientFirstName: row.patient_name ? row.patient_name.split(" ")[0] : "Unknown",
+          patientLastName: row.patient_name ? row.patient_name.split(" ").slice(1).join(" ") : "",
+          patientEmail: "unknown@example.com",
+          specialty: "Unknown",
+          payer: row.insurance_provider || "Unknown",
+          status: row.status || "Pending",
+          appointmentDate: null,
+          referralDate: row.created_at,
+          noShowRisk: 0,
+          // Add other fields as needed
+          reason: row.condition
+        }
+      });
     }
-  }, 404);
+    return c.json({
+      success: false,
+      error: {
+        code: "REFERRAL_NOT_FOUND",
+        message: `Referral with ID '${id}' not found`,
+        statusCode: 404
+      }
+    }, 404);
+  } catch (error) {
+    console.error("Fetch referral error:", error);
+    return c.json({
+      success: false,
+      error: {
+        code: "FETCH_FAILED",
+        message: "Failed to fetch referral details",
+        statusCode: 500
+      }
+    }, 500);
+  }
 });
 app.get("/referral/:id/logs", (c) => {
-  const id = c.req.param("id");
-  if (id === "ref-001") {
-    return c.json(MOCK_REFERRAL_LOGS);
-  }
   return c.json({
-    success: false,
-    error: {
-      code: "REFERRAL_NOT_FOUND",
-      message: `Referral with ID '${id}' not found`,
-      statusCode: 404
+    success: true,
+    data: {
+      referralId: c.req.param("id"),
+      logs: []
     }
-  }, 404);
+  });
 });
 app.post("/confirm", async (c) => {
   try {
