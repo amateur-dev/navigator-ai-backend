@@ -50,17 +50,19 @@ async function logReferralEvent(
   type: 'system' | 'user' | 'eligibility' | 'pa' | 'scheduling' | 'message',
   description: string,
   user: string = 'system',
-  details: Record<string, any> | null = null
+  details: Record<string, any> | null = null,
+  timestamp: string | null = null
 ): Promise<void> {
   try {
     const sanitizedEvent = `'${event.replace(/'/g, "''")}'`;
     const sanitizedDescription = `'${description.replace(/'/g, "''")}'`;
     const sanitizedUser = `'${user.replace(/'/g, "''")}'`;
     const detailsJson = details ? `'${JSON.stringify(details).replace(/'/g, "''")}'` : 'NULL';
+    const timestampValue = timestamp ? `'${timestamp}'` : "datetime('now')";
     
     const insertQuery = `
       INSERT INTO referral_logs (referral_id, event, type, timestamp, user, description, details)
-      VALUES (${referralId}, ${sanitizedEvent}, '${type}', datetime('now'), ${sanitizedUser}, ${sanitizedDescription}, ${detailsJson})
+      VALUES (${referralId}, ${sanitizedEvent}, '${type}', ${timestampValue}, ${sanitizedUser}, ${sanitizedDescription}, ${detailsJson})
     `;
     
     await db.executeQuery({ sqlQuery: insertQuery });
@@ -620,20 +622,55 @@ app.post('/seed', async (c) => {
       }
     }
 
-    // Insert demo referrals
+    // Insert demo referrals with realistic dates and timelines
+    // Helper function to add hours to a date
+    const addHours = (date: Date, hours: number) => {
+      const result = new Date(date);
+      result.setHours(result.getHours() + hours);
+      return result;
+    };
+    
+    // Helper function to add days to a date
+    const addDays = (date: Date, days: number) => {
+      const result = new Date(date);
+      result.setDate(result.getDate() + days);
+      return result;
+    };
+    
+    // Define referral creation dates between Nov 25 and Dec 2
+    const referralDates = [
+      new Date('2025-11-25T09:30:00Z'), // Monday
+      new Date('2025-11-25T14:15:00Z'),
+      new Date('2025-11-26T08:45:00Z'), // Tuesday
+      new Date('2025-11-26T16:20:00Z'),
+      new Date('2025-11-27T10:00:00Z'), // Wednesday
+      new Date('2025-11-27T13:30:00Z'),
+      new Date('2025-11-28T09:00:00Z'), // Thursday
+      new Date('2025-11-28T15:45:00Z'),
+      new Date('2025-11-29T11:20:00Z'), // Friday
+      new Date('2025-11-30T10:30:00Z'), // Saturday
+      new Date('2025-12-01T08:00:00Z'), // Sunday
+      new Date('2025-12-01T14:00:00Z'),
+      new Date('2025-12-02T09:15:00Z'), // Monday
+      new Date('2025-12-02T11:45:00Z'),
+      new Date('2025-12-02T15:30:00Z')
+    ];
+    
     for (let i = 0; i < demoReferrals.length; i++) {
       const ref = demoReferrals[i];
       const specialistId = specialistMap[ref.specialty] || allSpecs[0].id;
       const status = i < 9 ? 'Pending' : i < 12 ? 'Scheduled' : 'Completed';
+      const referralCreatedDate = referralDates[i];
       
       const sanitizedName = `'${ref.name.replace(/'/g, "''")}'`;
       const sanitizedEmail = `'${ref.email.replace(/'/g, "''")}'`;
       const sanitizedPhone = `'${ref.phone.replace(/'/g, "''")}'`;
       const sanitizedCondition = `'${ref.condition.replace(/'/g, "''")}'`;
       const sanitizedPayer = `'${ref.payer.replace(/'/g, "''")}'`;
+      const createdAtStr = referralCreatedDate.toISOString().replace('T', ' ').substring(0, 19);
 
       const insertRes = await db.executeQuery({
-        sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}')`
+        sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status, created_at) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}', '${createdAtStr}')`
       });
       
       // Get the inserted referral ID
@@ -641,8 +678,9 @@ app.post('/seed', async (c) => {
       const idRows = getRows(idRes);
       const refId = idRows[0]?.id;
       
-      // Add initial log for the referral
+      // Add realistic timeline of logs based on status
       if (refId) {
+        // 1. Referral Created (immediate)
         await logReferralEvent(
           db,
           refId,
@@ -650,59 +688,94 @@ app.post('/seed', async (c) => {
           'system',
           `Referral created for ${ref.name} - ${ref.condition}`,
           'system',
-          { specialty: ref.specialty, payer: ref.payer }
+          { specialty: ref.specialty, payer: ref.payer },
+          createdAtStr
         );
         
-        // Add status-specific logs
+        // For Pending referrals: just created, maybe eligibility check started
+        if (status === 'Pending') {
+          const eligibilityCheckTime = addHours(referralCreatedDate, Math.random() * 8 + 2); // 2-10 hours later
+          await logReferralEvent(
+            db,
+            refId,
+            'Eligibility Check Started',
+            'eligibility',
+            'Automated eligibility verification initiated',
+            'system',
+            null,
+            eligibilityCheckTime.toISOString().replace('T', ' ').substring(0, 19)
+          );
+        }
+        
+        // For Scheduled and Completed: full workflow
         if (status === 'Scheduled' || status === 'Completed') {
+          // Eligibility verified (1-3 days after referral)
+          const eligibilityTime = addDays(referralCreatedDate, Math.random() * 2 + 1);
           await logReferralEvent(
             db,
             refId,
             'Eligibility Verified',
             'eligibility',
             'Insurance coverage confirmed',
-            'system'
+            'system',
+            { copay: `$${Math.floor(Math.random() * 60) + 20}`, coinsurance: `${Math.floor(Math.random() * 30) + 10}%` },
+            eligibilityTime.toISOString().replace('T', ' ').substring(0, 19)
           );
-        }
-        
-        if (status === 'Scheduled' || status === 'Completed') {
+          
+          // PA Request Submitted (1-2 days after eligibility)
+          const paRequestTime = addDays(eligibilityTime, Math.random() * 1.5 + 1);
           await logReferralEvent(
             db,
             refId,
             'PA Request Submitted',
             'pa',
             'Prior authorization request submitted to payer',
-            'system'
+            'system',
+            null,
+            paRequestTime.toISOString().replace('T', ' ').substring(0, 19)
           );
+          
+          // PA Approved (2-5 days after request)
+          const paApprovedTime = addDays(paRequestTime, Math.random() * 3 + 2);
           await logReferralEvent(
             db,
             refId,
             'PA Approved',
             'pa',
             'Prior authorization approved by payer',
-            'system'
+            'system',
+            null,
+            paApprovedTime.toISOString().replace('T', ' ').substring(0, 19)
           );
-        }
-        
-        if (status === 'Scheduled' || status === 'Completed') {
+          
+          // Appointment Scheduled (1-3 days after PA approval)
+          const appointmentScheduleTime = addDays(paApprovedTime, Math.random() * 2 + 1);
           await logReferralEvent(
             db,
             refId,
             'Appointment Scheduled',
             'scheduling',
             'Appointment scheduled with specialist',
-            'system'
+            'system',
+            null,
+            appointmentScheduleTime.toISOString().replace('T', ' ').substring(0, 19)
           );
         }
         
+        // For Completed: appointment was attended
         if (status === 'Completed') {
+          // Get the last log (appointment scheduled) to add appointment completed
+          // For now, just add it 1-7 days later
+          const appointmentCompletedTime = addDays(new Date(), Math.random() * 6 - 3); // Could be past or near future
           await logReferralEvent(
             db,
             refId,
             'Appointment Completed',
             'scheduling',
             'Patient attended scheduled appointment',
-            'system'
+            'system',
+            null,
+            appointmentCompletedTime.toISOString().replace('T', ' ').substring(0, 19)
           );
         }
       }
