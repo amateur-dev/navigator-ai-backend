@@ -524,7 +524,58 @@ app.post('/seed', async (c) => {
       }
     }
 
-    return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists` });
+    // 5. Insert 15 Demo Referrals (for hackathon demo)
+    const demoReferrals = [
+      // Pending stage referrals (Just Now Referred, Intake, Eligibility)
+      { name: 'Sarah Johnson', email: 'sarah.johnson@email.com', phone: '+1-555-1234-5678', condition: 'Chest pain and irregular heartbeat', payer: 'Blue Cross Blue Shield', specialty: 'Cardiology' },
+      { name: 'Michael Chen', email: 'michael.chen@email.com', phone: '+1-555-1234-5679', condition: 'Chronic knee pain, potential meniscus tear', payer: 'UnitedHealthcare', specialty: 'Orthopedics' },
+      { name: 'Jennifer Williams', email: 'jennifer.williams@email.com', phone: '+1-555-1234-5680', condition: 'Persistent rash evaluation', payer: 'UnitedHealthcare', specialty: 'Dermatology' },
+      { name: 'David Brown', email: 'david.brown@email.com', phone: '+1-555-1234-5681', condition: 'Recurring migraines', payer: 'Aetna', specialty: 'Neurology' },
+      { name: 'Emily Davis', email: 'emily.davis@email.com', phone: '+1-555-1234-5682', condition: 'Follow-up breast imaging abnormality', payer: 'Cigna', specialty: 'Oncology' },
+      { name: 'James Garcia', email: 'james.garcia@email.com', phone: '+1-555-1234-5683', condition: 'Chronic stomach pain', payer: 'Humana', specialty: 'Gastroenterology' },
+      { name: 'Patricia Martinez', email: 'patricia.martinez@email.com', phone: '+1-555-1234-5684', condition: 'Persistent cough', payer: 'Kaiser Permanente', specialty: 'Pulmonology' },
+      { name: 'Robert Rodriguez', email: 'robert.rodriguez@email.com', phone: '+1-555-1234-5685', condition: 'Urinary tract issues', payer: 'Blue Cross Blue Shield', specialty: 'Urology' },
+      { name: 'Linda Miller', email: 'linda.miller@email.com', phone: '+1-555-1234-5686', condition: 'Vision correction consultation', payer: 'UnitedHealthcare', specialty: 'Ophthalmology' },
+      // Scheduled referrals
+      { name: 'Richard Martinez', email: 'richard.martinez@email.com', phone: '+1-555-1234-5687', condition: 'Chronic sinusitis', payer: 'Aetna', specialty: 'ENT Specialist' },
+      { name: 'Mary Thompson', email: 'mary.thompson@email.com', phone: '+1-555-1234-5688', condition: 'Diabetes thyroid management', payer: 'Cigna', specialty: 'Endocrinologist' },
+      { name: 'Charles Lee', email: 'charles.lee@email.com', phone: '+1-555-1234-5689', condition: 'Arthritis autoimmune evaluation', payer: 'Humana', specialty: 'Rheumatologist' },
+      // Completed referrals
+      { name: 'Karen Taylor', email: 'karen.taylor@email.com', phone: '+1-555-1234-5690', condition: 'Acne management', payer: 'Kaiser Permanente', specialty: 'Dermatology' },
+      { name: 'Thomas Anderson', email: 'thomas.anderson@email.com', phone: '+1-555-1234-5691', condition: 'Post-MI evaluation', payer: 'Blue Cross Blue Shield', specialty: 'Cardiology' },
+      { name: 'Nancy White', email: 'nancy.white@email.com', phone: '+1-555-1234-5692', condition: 'Lower back pain', payer: 'UnitedHealthcare', specialty: 'Orthopedics' },
+    ];
+
+    // Get specialist IDs for random assignment
+    const specialistMap: Record<string, number> = {};
+    for (const spec of allSpecs) {
+      const specRes = await db.executeQuery({ 
+        sqlQuery: `SELECT specialty FROM specialists WHERE id = ${spec.id}` 
+      });
+      const specRow = getRows(specRes)[0];
+      if (specRow?.specialty) {
+        specialistMap[specRow.specialty] = spec.id;
+      }
+    }
+
+    // Insert demo referrals
+    for (let i = 0; i < demoReferrals.length; i++) {
+      const ref = demoReferrals[i];
+      const specialistId = specialistMap[ref.specialty] || allSpecs[0].id;
+      const status = i < 9 ? 'Pending' : i < 12 ? 'Scheduled' : 'Completed';
+      
+      const sanitizedName = `'${ref.name.replace(/'/g, "''")}'`;
+      const sanitizedEmail = `'${ref.email.replace(/'/g, "''")}'`;
+      const sanitizedPhone = `'${ref.phone.replace(/'/g, "''")}'`;
+      const sanitizedCondition = `'${ref.condition.replace(/'/g, "''")}'`;
+      const sanitizedPayer = `'${ref.payer.replace(/'/g, "''")}'`;
+
+      await db.executeQuery({
+        sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}')`
+      });
+    }
+
+    return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists and 15 demo referrals` });
   } catch (error) {
     console.error('Seed error:', error);
     return c.json({ error: 'Seeding failed: ' + (error instanceof Error ? error.message : String(error)) }, 500);
@@ -561,19 +612,40 @@ app.get('/referrals', async (c) => {
 
     const rows = getRows(result);
 
-    // Map to API format
-    const referrals = rows.map((row: any) => ({
-      id: `ref-${row.id}`,
-      patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
-      patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
-      patientPhoneNumber: row.patient_phone || null,
-      patientEmail: row.patient_email || null,
-      specialty: 'Unknown',
-      payer: row.insurance_provider || 'Unknown',
-      status: row.status || 'Pending',
-      appointmentDate: null,
-      referralDate: row.created_at,
-      noShowRisk: 0
+    // Get specialist info for each referral to get specialty
+    const referrals = await Promise.all(rows.map(async (row: any) => {
+      let specialty = 'Unknown';
+      if (row.specialist_id) {
+        const specRes = await db.executeQuery({
+          sqlQuery: `SELECT specialty FROM specialists WHERE id = ${row.specialist_id}`
+        });
+        const specRow = getRows(specRes)[0];
+        if (specRow?.specialty) {
+          specialty = specRow.specialty;
+        }
+      }
+
+      return {
+        id: `ref-${row.id}`,
+        patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
+        patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
+        patientPhoneNumber: row.patient_phone || null,
+        patientEmail: row.patient_email || null,
+        specialty: specialty,
+        payer: row.insurance_provider || 'Unknown',
+        status: row.status || 'Pending',
+        appointmentDate: null,
+        referralDate: row.created_at,
+        noShowRisk: 0,
+        // Add minimal steps for demo (will be enhanced later with full mock data)
+        steps: [
+          { id: 'step-1', label: 'Intake', status: 'completed', description: 'Initial referral received' },
+          { id: 'step-2', label: 'Eligibility', status: row.status === 'Pending' ? 'current' : 'completed', description: 'Insurance verification' },
+          { id: 'step-3', label: 'Prior Authorization', status: row.status === 'Scheduled' || row.status === 'Completed' ? 'completed' : 'upcoming', description: 'PA approval' },
+          { id: 'step-4', label: 'Scheduled', status: row.status === 'Completed' ? 'completed' : row.status === 'Scheduled' ? 'current' : 'upcoming', description: 'Appointment scheduled' },
+          { id: 'step-5', label: 'Completed', status: row.status === 'Completed' ? 'completed' : 'upcoming', description: 'Appointment attended' }
+        ]
+      };
     }));
 
     return c.json({
