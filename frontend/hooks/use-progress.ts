@@ -104,6 +104,7 @@ export const useProgress = ({ initialSteps, onComplete, onCancel }: UseProgressO
 
           // Execute substeps if they exist
           if (step.substeps && step.substeps.length > 0) {
+            const substeps = step.substeps
             let substepIndex = 0
             const executeSubstep = () => {
               // Check cancellation before each substep
@@ -112,8 +113,8 @@ export const useProgress = ({ initialSteps, onComplete, onCancel }: UseProgressO
                 return
               }
 
-              if (substepIndex < step.substeps.length) {
-                const substep = step.substeps[substepIndex]
+              if (substepIndex < substeps.length) {
+                const substep = substeps[substepIndex]
                 updateStepStatus(substep.id, 'running')
 
                 const substepTimeout = setTimeout(() => {
