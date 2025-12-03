@@ -155,7 +155,7 @@ export const useReferralUpload = () => {
       return result.data as ConfirmationResponse;
     },
     onSuccess: () => {
-      toast.success("Appointment confirmed successfully!");
+      // Toast will be shown after orchestration progress completes
       // Refetch referrals table data
       queryClient.invalidateQueries({ queryKey: ["referrals"] });
     },

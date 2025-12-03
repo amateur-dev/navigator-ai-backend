@@ -148,6 +148,7 @@ export const ReferralExtractionForm = ({
             placeholder="Enter patient phone number"
             {...register("patientPhoneNumber")}
             aria-invalid={!!errors.patientPhoneNumber}
+            autoFocus
           />
           {errors.patientPhoneNumber && (
             <p className="text-xs text-red-500">

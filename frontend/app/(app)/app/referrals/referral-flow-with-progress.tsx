@@ -99,13 +99,13 @@ const createOrchestrationSteps = (
   },
   {
     id: "insurance-provider",
-    label: "Looking for Insurance provider",
+    label: "Checking insurance provider",
     status: "pending",
     delay: 2000,
     substeps: [
       {
         id: "pre-authorization",
-        label: "Getting Pre Authorization",
+        label: "Getting pre authorization",
         status: "pending",
         delay: 1500,
       },
@@ -122,7 +122,7 @@ const createOrchestrationSteps = (
   },
   {
     id: "confirming-appointment",
-    label: "Confirming Appointment",
+    label: "Confirming appointment",
     status: "pending",
     delay: 1500,
   },
@@ -145,6 +145,7 @@ export const ReferralFlowWithProgress = () => {
     React.useState(false);
   const [orchestrationProgressComplete, setOrchestrationProgressComplete] =
     React.useState(false);
+  const toastShownRef = React.useRef(false);
 
   const {
     uploadMutation,
@@ -192,6 +193,19 @@ export const ReferralFlowWithProgress = () => {
       setOrchestrationProgressComplete(false);
     },
   });
+
+  // Show appointment confirmed toast only after orchestration progress completes
+  React.useEffect(() => {
+    if (
+      orchestrationProgressComplete &&
+      confirmMutation.isSuccess &&
+      confirmMutation.data &&
+      !toastShownRef.current
+    ) {
+      toast.success("Appointment confirmed successfully!");
+      toastShownRef.current = true;
+    }
+  }, [orchestrationProgressComplete, confirmMutation.isSuccess, confirmMutation.data]);
 
   // Handle file upload
   const handleFileUpload = React.useCallback(
@@ -244,6 +258,7 @@ export const ReferralFlowWithProgress = () => {
     setUploadProgressComplete(false);
     setOrchestrationProgressComplete(false);
     setOrchestrationSteps(createOrchestrationSteps());
+    toastShownRef.current = false;
     uploadProgress.reset();
     orchestrationProgress.reset();
     resetAll();
@@ -258,28 +273,22 @@ export const ReferralFlowWithProgress = () => {
     async (data: ExtractionFormData) => {
       setShowOrchestrationProgress(true);
 
-      // Update steps with initial values (will be updated with real data)
-      const initialSteps = createOrchestrationSteps();
-      setOrchestrationSteps(initialSteps);
-
-      // Start the progress animation immediately with placeholders
-      setTimeout(() => {
-        orchestrationProgress.start();
-      }, 100);
-
-      // Trigger the actual orchestration to get real data
+      // Trigger the actual orchestration to get real data FIRST
       try {
         const result = await orchestrateMutation.mutateAsync(data);
 
-        // Update steps with real data from API as they come in
-        if (result.data) {
-          const updatedSteps = createOrchestrationSteps(
-            result.data.specialist,
-            result.data.assignedDoctor,
-            result.data.insuranceStatus
-          );
-          setOrchestrationSteps(updatedSteps);
-        }
+        // Create steps with real data from API
+        const stepsWithRealData = createOrchestrationSteps(
+          result.data?.specialist,
+          result.data?.assignedDoctor,
+          result.data?.insuranceStatus
+        );
+        setOrchestrationSteps(stepsWithRealData);
+
+        // Start the progress animation with real data
+        setTimeout(() => {
+          orchestrationProgress.start();
+        }, 100);
       } catch (error) {
         setShowOrchestrationProgress(false);
         orchestrationProgress.reset();
@@ -317,11 +326,23 @@ export const ReferralFlowWithProgress = () => {
             <ReferralUploadLoading fileName={uploadedFile.file.name} />
           )}
 
+        {/* Show loading during orchestration instead of form */}
+        {showOrchestrationProgress &&
+          !orchestrationProgressComplete &&
+          uploadedFile && (
+            <ReferralUploadLoading
+              message="Orchestrating referral..."
+              subMessage="Finding doctors, checking availability, and processing insurance"
+            />
+          )}
+
+        {/* Show form only after upload progress completes and orchestration hasn't started */}
         {isExtractionSuccess &&
           uploadedFile &&
           uploadMutation.data &&
           !isComplete &&
-          uploadProgressComplete && (
+          uploadProgressComplete &&
+          !showOrchestrationProgress && (
             <ReferralExtractionSuccess
               fileName={uploadedFile.file.name}
               extractedData={uploadMutation.data?.data || {}}
@@ -354,7 +375,7 @@ export const ReferralFlowWithProgress = () => {
 
       {/* Progress Sidebars */}
       {showUploadProgress && !showOrchestrationProgress && (
-        <div className="w-96 h-full overflow-hidden">
+        <div className="w-[440px] h-full overflow-hidden">
           <PDFUploadProgress
             steps={uploadProgress.steps}
             isRunning={uploadProgress.isRunning}
@@ -364,7 +385,7 @@ export const ReferralFlowWithProgress = () => {
       )}
 
       {showOrchestrationProgress && (
-        <div className="w-96 h-full overflow-hidden">
+        <div className="w-[440px] h-full overflow-hidden">
           <OrchestrationProgress
             steps={orchestrationProgress.steps}
             isRunning={orchestrationProgress.isRunning}

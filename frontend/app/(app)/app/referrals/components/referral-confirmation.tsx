@@ -38,7 +38,7 @@ export const ReferralConfirmation = ({
 }: ReferralConfirmationProps) => {
   return (
     <div className="flex flex-col gap-4 w-full h-full flex-1">
-      <Alert variant="default">
+      <Alert className="border-green-500/50 bg-green-50">
         <CheckCircle2 className="size-4 text-green-600!" />
         <div className="flex items-center justify-between gap-3 col-start-2">
           <div className="flex-1">

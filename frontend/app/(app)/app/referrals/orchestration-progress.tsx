@@ -41,7 +41,7 @@ const getStatusBadge = (status: StepStatus) => {
   switch (status) {
     case "running":
       return (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="default" className="text-xs">
           <Loader2 className="size-3 animate-spin" />
           Processing
         </Badge>
@@ -55,7 +55,7 @@ const getStatusBadge = (status: StepStatus) => {
       );
     case "failed":
       return (
-        <Badge variant="outline" className="text-xs">
+        <Badge variant="destructive" className="text-xs">
           <XCircle className="size-3" />
           Failed
         </Badge>
@@ -121,7 +121,7 @@ const ProgressStepItem = ({ step }: { step: ProgressStep }) => {
       </div>
 
       {step.substeps && step.substeps.length > 0 && (
-        <div className="ml-11 space-y-3 mt-2">
+        <div className="ml-11 space-y-3 mt-1">
           {step.substeps.map((substep) => (
             <div key={substep.id} className="flex items-start gap-3">
               <div className="shrink-0 mt-0.5">
@@ -159,8 +159,17 @@ export const OrchestrationProgress = ({
   className,
 }: OrchestrationProgressProps) => {
   const completedSteps = steps.filter((s) => s.status === "completed").length;
+  const runningSteps = steps.filter((s) => s.status === "running").length;
   const totalSteps = steps.length;
   const progress = totalSteps > 0 ? (completedSteps / totalSteps) * 100 : 0;
+
+  // Check if any step is actually running (including substeps)
+  const hasRunningSteps =
+    isRunning ||
+    runningSteps > 0 ||
+    steps.some((step) =>
+      step.substeps?.some((substep) => substep.status === "running")
+    );
 
   return (
     <div
@@ -179,18 +188,18 @@ export const OrchestrationProgress = ({
               Orchestrating Referral
             </h3>
             <p className="text-sm text-muted-foreground leading-[1]">
-              {isRunning
+              {hasRunningSteps
                 ? `Processing step ${completedSteps + 1} of ${totalSteps}`
                 : completedSteps === totalSteps
                 ? "Complete"
                 : "Ready"}
             </p>
 
-            {isRunning && (
+            {hasRunningSteps && (
               <div className="mt-3">
                 <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-blue-600 transition-all duration-500 ease-out"
+                    className="h-full bg-gray-950 transition-all duration-500 ease-out"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -199,25 +208,12 @@ export const OrchestrationProgress = ({
           </div>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1">
           {steps.map((step) => (
             <ProgressStepItem key={step.id} step={step} />
           ))}
         </div>
       </div>
-
-      {isRunning && (
-        <div className="p-4 border-t bg-muted/50">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={onCancel}
-            type="button"
-          >
-            Cancel
-          </Button>
-        </div>
-      )}
     </div>
   );
 };
