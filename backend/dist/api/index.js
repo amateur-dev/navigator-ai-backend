@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "d8e2ae840081ee9bc54fc48a7f8523bcf6763390"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "9e5c666433ba45ed0b907dd4936157da1aaf6d38"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1936,6 +1936,13 @@ app.post("/seed", async (c) => {
     if (body && body.clearReferralsOnly) {
       await db.executeQuery({ sqlQuery: "DELETE FROM referrals" });
       return c.json({ message: "Referrals cleared (specialists preserved)" });
+    }
+    try {
+      await db.executeQuery({ sqlQuery: "DROP TABLE IF EXISTS slots" });
+      await db.executeQuery({ sqlQuery: "DROP TABLE IF EXISTS referrals" });
+      await db.executeQuery({ sqlQuery: "DROP TABLE IF EXISTS specialists" });
+    } catch (e) {
+      console.log("[INFO] No existing tables to drop:", e);
     }
     await db.executeQuery({
       sqlQuery: `
