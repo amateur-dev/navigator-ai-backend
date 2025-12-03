@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "2aa3b6025d4bda021b83c5796158d43165687256"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "c867dbec4ab8844638b5fea113a2980d57a8c228"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -2010,7 +2010,8 @@ app.post("/seed", async (c) => {
           specialist_id INTEGER REFERENCES specialists(id),
           slot_id INTEGER REFERENCES slots(id),
           status TEXT DEFAULT 'Pending',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          appointmentDate TEXT
       );
     `
     });
@@ -2183,6 +2184,11 @@ app.post("/seed", async (c) => {
       const specialistId = specialistMap[ref.specialty] || allSpecs[0].id;
       const status = i < 9 ? "Pending" : i < 12 ? "Scheduled" : "Completed";
       const referralCreatedDate = referralDates[i];
+      let appointmentDateStr = "NULL";
+      if (status === "Scheduled" || status === "Completed") {
+        const appointmentDate = addDays(referralCreatedDate, Math.random() * 7 + 7);
+        appointmentDateStr = `'${appointmentDate.toISOString().replace("T", " ").substring(0, 19)}'`;
+      }
       const sanitizedName = `'${ref.name.replace(/'/g, "''")}'`;
       const sanitizedEmail = `'${ref.email.replace(/'/g, "''")}'`;
       const sanitizedPhone = `'${ref.phone.replace(/'/g, "''")}'`;
@@ -2190,7 +2196,7 @@ app.post("/seed", async (c) => {
       const sanitizedPayer = `'${ref.payer.replace(/'/g, "''")}'`;
       const createdAtStr = referralCreatedDate.toISOString().replace("T", " ").substring(0, 19);
       const insertRes = await db.executeQuery({
-        sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status, created_at) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}', '${createdAtStr}')`
+        sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status, created_at, appointmentDate) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}', '${createdAtStr}', ${appointmentDateStr})`
       });
       const idRes = await db.executeQuery({ sqlQuery: "SELECT last_insert_rowid() as id" });
       const idRows = getRows(idRes);
@@ -2329,7 +2335,7 @@ app.get("/referrals", async (c) => {
         specialty,
         payer: row.insurance_provider || "Unknown",
         status: row.status || "Pending",
-        appointmentDate: null,
+        appointmentDate: row.appointmentDate || null,
         referralDate: row.created_at,
         noShowRisk: 0,
         // Add minimal steps for demo (will be enhanced later with full mock data)
@@ -2458,11 +2464,11 @@ app.get("/referral/:id", async (c) => {
         }
       ];
       const scheduling = {
-        appointmentDate: currentStatus === "Completed" ? new Date(Date.now() - 5 * 24 * 60 * 60 * 1e3).toISOString() : currentStatus === "Scheduled" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3).toISOString() : null,
-        timeSlot: currentStatus !== "Pending" ? "10:30 AM - 11:00 AM" : null,
-        location: currentStatus !== "Pending" ? "Medical Center, Suite 420" : null,
+        appointmentDate: row.appointmentDate || null,
+        timeSlot: row.appointmentDate ? "10:30 AM - 11:00 AM" : null,
+        location: row.appointmentDate ? "Medical Center, Suite 420" : null,
         provider: providerName,
-        notes: currentStatus === "Completed" ? "Appointment completed successfully" : "Pending confirmation"
+        notes: currentStatus === "Completed" ? "Appointment completed successfully" : currentStatus === "Scheduled" ? "Appointment scheduled" : "Pending confirmation"
       };
       const urgencyMap = {
         "chest": "stat",

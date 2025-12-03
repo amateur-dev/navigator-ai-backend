@@ -457,7 +457,8 @@ app.post('/seed', async (c) => {
           specialist_id INTEGER REFERENCES specialists(id),
           slot_id INTEGER REFERENCES slots(id),
           status TEXT DEFAULT 'Pending',
-          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          appointmentDate TEXT
       );
     `});
 
@@ -662,6 +663,14 @@ app.post('/seed', async (c) => {
       const status = i < 9 ? 'Pending' : i < 12 ? 'Scheduled' : 'Completed';
       const referralCreatedDate = referralDates[i];
       
+      // Calculate appointment date only for Scheduled and Completed
+      let appointmentDateStr = 'NULL';
+      if (status === 'Scheduled' || status === 'Completed') {
+        // Appointment should be 7-14 days after referral creation
+        const appointmentDate = addDays(referralCreatedDate, Math.random() * 7 + 7);
+        appointmentDateStr = `'${appointmentDate.toISOString().replace('T', ' ').substring(0, 19)}'`;
+      }
+      
       const sanitizedName = `'${ref.name.replace(/'/g, "''")}'`;
       const sanitizedEmail = `'${ref.email.replace(/'/g, "''")}'`;
       const sanitizedPhone = `'${ref.phone.replace(/'/g, "''")}'`;
@@ -670,7 +679,7 @@ app.post('/seed', async (c) => {
       const createdAtStr = referralCreatedDate.toISOString().replace('T', ' ').substring(0, 19);
 
       const insertRes = await db.executeQuery({
-        sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status, created_at) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}', '${createdAtStr}')`
+        sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status, created_at, appointmentDate) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}', '${createdAtStr}', ${appointmentDateStr})`
       });
       
       // Get the inserted referral ID
@@ -840,7 +849,7 @@ app.get('/referrals', async (c) => {
         specialty: specialty,
         payer: row.insurance_provider || 'Unknown',
         status: row.status || 'Pending',
-        appointmentDate: null,
+        appointmentDate: row.appointmentDate || null,
         referralDate: row.created_at,
         noShowRisk: 0,
         // Add minimal steps for demo (will be enhanced later with full mock data)
@@ -977,14 +986,13 @@ app.get('/referral/:id', async (c) => {
         }
       ];
       
-      // Mock scheduling data
+      // Mock scheduling data - use actual appointment date from database if available
       const scheduling = {
-        appointmentDate: currentStatus === 'Completed' ? new Date(Date.now() - 5*24*60*60*1000).toISOString() : 
-                        currentStatus === 'Scheduled' ? new Date(Date.now() + 7*24*60*60*1000).toISOString() : null,
-        timeSlot: currentStatus !== 'Pending' ? '10:30 AM - 11:00 AM' : null,
-        location: currentStatus !== 'Pending' ? 'Medical Center, Suite 420' : null,
+        appointmentDate: row.appointmentDate || null,
+        timeSlot: row.appointmentDate ? '10:30 AM - 11:00 AM' : null,
+        location: row.appointmentDate ? 'Medical Center, Suite 420' : null,
         provider: providerName,
-        notes: currentStatus === 'Completed' ? 'Appointment completed successfully' : 'Pending confirmation'
+        notes: currentStatus === 'Completed' ? 'Appointment completed successfully' : currentStatus === 'Scheduled' ? 'Appointment scheduled' : 'Pending confirmation'
       };
       
       // Determine urgency based on condition (lowercase for frontend)
