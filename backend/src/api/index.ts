@@ -781,19 +781,21 @@ app.get('/referral/:id', async (c) => {
         notes: currentStatus === 'Completed' ? 'Appointment completed successfully' : 'Pending confirmation'
       };
       
-      // Determine urgency based on condition
-      const urgencyMap: Record<string, string> = {
-        'chest': 'High',
-        'heart': 'High',
-        'severe': 'High',
-        'acute': 'High',
-        'emergency': 'High',
-        'chronic': 'Medium',
-        'regular': 'Low',
-        'routine': 'Low'
+      // Determine urgency based on condition (lowercase for frontend)
+      const urgencyMap: Record<string, 'routine' | 'urgent' | 'stat'> = {
+        'chest': 'stat',
+        'heart': 'stat',
+        'severe': 'stat',
+        'acute': 'stat',
+        'emergency': 'stat',
+        'critical': 'stat',
+        'urgent': 'urgent',
+        'chronic': 'routine',
+        'regular': 'routine',
+        'routine': 'routine'
       };
       
-      let urgency = 'Medium';
+      let urgency: 'routine' | 'urgent' | 'stat' = 'routine';
       const conditionLower = (row.condition || '').toLowerCase();
       for (const [key, level] of Object.entries(urgencyMap)) {
         if (conditionLower.includes(key)) {
@@ -815,6 +817,16 @@ app.get('/referral/:id', async (c) => {
       
       const plan = plans[row.insurance_provider] || 'Standard Plan';
       
+      // Convert messages to proper format for frontend
+      const actionLog = messages.map((msg: any, idx: number) => ({
+        id: msg.id,
+        event: msg.content,
+        type: msg.channel === 'SMS' ? 'message' : msg.channel === 'Email' ? 'message' : 'system',
+        timestamp: msg.timestamp,
+        description: `${msg.direction} ${msg.channel} message`,
+        details: { channel: msg.channel, status: msg.status }
+      }));
+      
       return c.json({
         success: true,
         data: {
@@ -823,11 +835,12 @@ app.get('/referral/:id', async (c) => {
           patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
           patientPhoneNumber: row.patient_phone || null,
           patientEmail: row.patient_email || null,
+          age: 45, // Mock age for demo
           specialty: specialty,
           payer: row.insurance_provider || 'Unknown',
           plan: plan,
-          provider: providerName,
-          facility: 'Medical Center',
+          providerName: providerName,
+          facilityName: 'Medical Center',
           status: row.status || 'Pending',
           urgency: urgency,
           appointmentDate: scheduling.appointmentDate,
@@ -835,6 +848,7 @@ app.get('/referral/:id', async (c) => {
           noShowRisk: 0,
           reason: row.condition,
           steps: steps,
+          actionLog: actionLog,
           messages: messages,
           scheduling: scheduling
         }

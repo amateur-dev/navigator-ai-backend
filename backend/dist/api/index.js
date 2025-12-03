@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "00f59ec51eb9252b0ba089fdf61563e4f1df6add"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "e95540680f3123c5cbf9a28f1b2506d2c89b21d5"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -2224,13 +2224,17 @@ app.get("/referral/:id", async (c) => {
     if (rows.length > 0) {
       const row = rows[0];
       let specialty = "Unknown";
+      let providerName = "Unknown";
       if (row.specialist_id) {
         const specRes = await db.executeQuery({
-          sqlQuery: `SELECT specialty FROM specialists WHERE id = ${row.specialist_id}`
+          sqlQuery: `SELECT name, specialty FROM specialists WHERE id = ${row.specialist_id}`
         });
         const specRow = getRows(specRes)[0];
         if (specRow?.specialty) {
           specialty = specRow.specialty;
+        }
+        if (specRow?.name) {
+          providerName = specRow.name;
         }
       }
       const getStepStatus = (stepIndex, currentStatus2) => {
@@ -2252,6 +2256,70 @@ app.get("/referral/:id", async (c) => {
         { id: "step-4", label: "Scheduled", status: getStepStatus(4, currentStatus), description: "Appointment scheduled" },
         { id: "step-5", label: "Completed", status: getStepStatus(5, currentStatus), description: "Appointment attended" }
       ];
+      const messages = [
+        {
+          id: "msg-1",
+          type: "SMS",
+          direction: "outbound",
+          status: "delivered",
+          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1e3).toISOString(),
+          content: `Hello ${row.patient_name}, your referral has been received. We will contact you shortly to schedule your ${specialty} appointment.`,
+          channel: "SMS"
+        },
+        {
+          id: "msg-2",
+          type: "Email",
+          direction: "outbound",
+          status: "delivered",
+          timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1e3).toISOString(),
+          content: `Referral confirmation for ${specialty} specialist visit. Please check your insurance details with your payer: ${row.insurance_provider}`,
+          channel: "Email"
+        },
+        {
+          id: "msg-3",
+          type: "In-App",
+          direction: "inbound",
+          status: "read",
+          timestamp: new Date(Date.now() - 12 * 60 * 60 * 1e3).toISOString(),
+          content: "Yes, I can confirm my information is correct.",
+          channel: "In-App"
+        }
+      ];
+      const scheduling = {
+        appointmentDate: currentStatus === "Completed" ? new Date(Date.now() - 5 * 24 * 60 * 60 * 1e3).toISOString() : currentStatus === "Scheduled" ? new Date(Date.now() + 7 * 24 * 60 * 60 * 1e3).toISOString() : null,
+        timeSlot: currentStatus !== "Pending" ? "10:30 AM - 11:00 AM" : null,
+        location: currentStatus !== "Pending" ? "Medical Center, Suite 420" : null,
+        provider: providerName,
+        notes: currentStatus === "Completed" ? "Appointment completed successfully" : "Pending confirmation"
+      };
+      const urgencyMap = {
+        "chest": "High",
+        "heart": "High",
+        "severe": "High",
+        "acute": "High",
+        "emergency": "High",
+        "chronic": "Medium",
+        "regular": "Low",
+        "routine": "Low"
+      };
+      let urgency = "Medium";
+      const conditionLower = (row.condition || "").toLowerCase();
+      for (const [key, level] of Object.entries(urgencyMap)) {
+        if (conditionLower.includes(key)) {
+          urgency = level;
+          break;
+        }
+      }
+      const plans = {
+        "Blue Cross Blue Shield": "PPO Plan",
+        "UnitedHealthcare": "HMO Plus",
+        "Aetna": "EPO Standard",
+        "Cigna": "Preferred Plus",
+        "Kaiser Permanente": "Comprehensive Care",
+        "Humana": "Silver Plan",
+        "Anthem Blue Cross PPO": "PPO Advantage"
+      };
+      const plan = plans[row.insurance_provider] || "Standard Plan";
       return c.json({
         success: true,
         data: {
@@ -2262,12 +2330,18 @@ app.get("/referral/:id", async (c) => {
           patientEmail: row.patient_email || null,
           specialty,
           payer: row.insurance_provider || "Unknown",
+          plan,
+          provider: providerName,
+          facility: "Medical Center",
           status: row.status || "Pending",
-          appointmentDate: null,
+          urgency,
+          appointmentDate: scheduling.appointmentDate,
           referralDate: row.created_at,
           noShowRisk: 0,
           reason: row.condition,
-          steps
+          steps,
+          messages,
+          scheduling
         }
       });
     }
