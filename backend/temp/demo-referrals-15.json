@@ -1,0 +1,1832 @@
+[
+  {
+    "id": "ref-demo-01",
+    "patientFirstName": "Sarah",
+    "patientLastName": "Johnson",
+    "patientEmail": "sarah.johnson@email.com",
+    "age": 25,
+    "specialty": "Cardiology",
+    "payer": "Blue Cross Blue Shield",
+    "plan": "Blue Cross Blue Shield Standard Plan",
+    "status": "Pending",
+    "urgency": "routine",
+    "appointmentDate": "2025-12-09T23:45:41.691Z",
+    "referralDate": "2025-11-20T03:19:00.962Z",
+    "noShowRisk": 53,
+    "providerName": "Dr. Chen",
+    "facilityName": "Cardiology Center",
+    "reason": "Chest pain and irregular heartbeat",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-21T03:19:25.717Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "current",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "upcoming",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-20T03:19:00.962Z",
+        "user": "Dr. Patricia Lee",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-21T03:19:25.717Z",
+        "user": "Dr. James Mitchell",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-21T18:29:22.475Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-21T19:29:22.475Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$75",
+          "coinsurance": "12%"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "SMS"
+  },
+  {
+    "id": "ref-demo-02",
+    "patientFirstName": "Michael",
+    "patientLastName": "Chen",
+    "patientEmail": "michael.chen@email.com",
+    "age": 62,
+    "specialty": "Orthopedics",
+    "payer": "UnitedHealthcare",
+    "plan": "UnitedHealthcare Standard Plan",
+    "status": "Pending",
+    "urgency": "stat",
+    "appointmentDate": "2025-12-06T10:44:03.736Z",
+    "referralDate": "2025-11-09T02:57:56.421Z",
+    "noShowRisk": 18,
+    "providerName": "Dr. Williams",
+    "facilityName": "Orthopedics Center",
+    "reason": "Shoulder injury",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-10T08:17:29.432Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "current",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "upcoming",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-09T02:57:56.421Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-10T08:17:29.432Z",
+        "user": "Sarah Chen",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-10T18:07:42.681Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-10T19:07:42.681Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$54",
+          "coinsurance": "18%"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "Email"
+  },
+  {
+    "id": "ref-demo-03",
+    "patientFirstName": "Jennifer",
+    "patientLastName": "Williams",
+    "patientEmail": "jennifer.williams@email.com",
+    "age": 36,
+    "specialty": "Dermatology",
+    "payer": "UnitedHealthcare",
+    "plan": "UnitedHealthcare Standard Plan",
+    "status": "Pending",
+    "urgency": "stat",
+    "appointmentDate": "2025-12-30T08:02:57.412Z",
+    "referralDate": "2025-11-27T10:13:15.324Z",
+    "noShowRisk": 29,
+    "providerName": "Dr. Brown",
+    "facilityName": "Dermatology Center",
+    "reason": "Acne management",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-28T12:09:54.692Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "current",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "upcoming",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-27T10:13:15.324Z",
+        "user": "Dr. James Mitchell",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-28T12:09:54.692Z",
+        "user": "Sarah Chen",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-28T21:13:17.047Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-28T22:13:17.047Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$58",
+          "coinsurance": "35%"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "WhatsApp"
+  },
+  {
+    "id": "ref-demo-04",
+    "patientFirstName": "David",
+    "patientLastName": "Brown",
+    "patientEmail": "david.brown@email.com",
+    "age": 54,
+    "specialty": "Neurology",
+    "payer": "Humana",
+    "plan": "Humana Standard Plan",
+    "status": "Pending",
+    "urgency": "routine",
+    "appointmentDate": "2025-11-20T12:40:13.871Z",
+    "referralDate": "2025-11-06T15:29:15.542Z",
+    "noShowRisk": 51,
+    "providerName": "Dr. Jones",
+    "facilityName": "Neurology Center",
+    "reason": "Seizure evaluation",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-07T18:43:52.642Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "current",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "upcoming",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-06T15:29:15.542Z",
+        "user": "Linda Martinez",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-07T18:43:52.642Z",
+        "user": "Dr. James Mitchell",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-08T07:36:14.751Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-08T08:36:14.751Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$20",
+          "coinsurance": "22%"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "Phone"
+  },
+  {
+    "id": "ref-demo-05",
+    "patientFirstName": "Emily",
+    "patientLastName": "Jones",
+    "patientEmail": "emily.jones@email.com",
+    "age": 72,
+    "specialty": "Oncology",
+    "payer": "Cigna",
+    "plan": "Cigna Standard Plan",
+    "status": "Pending",
+    "urgency": "stat",
+    "appointmentDate": "2025-11-25T03:20:44.712Z",
+    "referralDate": "2025-11-19T23:06:03.858Z",
+    "noShowRisk": 33,
+    "providerName": "Dr. Garcia",
+    "facilityName": "Oncology Center",
+    "reason": "Follow-up breast imaging abnormality",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-20T13:52:52.455Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "current",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "upcoming",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-19T23:06:03.858Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-20T13:52:52.455Z",
+        "user": "Mike Johnson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-21T02:39:15.496Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-21T03:39:15.496Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$54",
+          "coinsurance": "23%"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "In-App"
+  },
+  {
+    "id": "ref-demo-06",
+    "patientFirstName": "James",
+    "patientLastName": "Garcia",
+    "patientEmail": "james.garcia@email.com",
+    "age": 64,
+    "specialty": "Gastroenterology",
+    "payer": "Humana",
+    "plan": "Humana Standard Plan",
+    "status": "Pending",
+    "urgency": "urgent",
+    "appointmentDate": "2025-11-29T23:55:04.597Z",
+    "referralDate": "2025-11-15T11:05:55.889Z",
+    "noShowRisk": 41,
+    "providerName": "Dr. Miller",
+    "facilityName": "Gastroenterology Center",
+    "reason": "GERD management",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-16T00:38:30.537Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "current",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "upcoming",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-15T11:05:55.889Z",
+        "user": "Dr. Patricia Lee",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-16T00:38:30.537Z",
+        "user": "Dr. Patricia Lee",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-16T08:01:35.568Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-16T09:01:35.568Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$20",
+          "coinsurance": "25%"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "SMS"
+  },
+  {
+    "id": "ref-demo-07",
+    "patientFirstName": "Patricia",
+    "patientLastName": "Miller",
+    "patientEmail": "patricia.miller@email.com",
+    "age": 63,
+    "specialty": "Pulmonology",
+    "payer": "Kaiser Permanente",
+    "plan": "Kaiser Permanente Standard Plan",
+    "status": "Pending",
+    "urgency": "urgent",
+    "appointmentDate": "2025-12-10T14:10:48.249Z",
+    "referralDate": "2025-11-08T19:52:39.978Z",
+    "noShowRisk": 48,
+    "providerName": "Dr. Davis",
+    "facilityName": "Pulmonology Center",
+    "reason": "Persistent cough",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-10T07:19:00.434Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-11T01:55:15.411Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "current",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-08T19:52:39.978Z",
+        "user": "Sarah Chen",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-10T07:19:00.434Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-10T15:18:44.686Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-11T01:55:15.411Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$76",
+          "coinsurance": "38%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-12T10:26:50.904Z",
+        "user": "Linda Martinez",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-14T13:50:31.438Z",
+        "user": "Kaiser Permanente",
+        "description": "Prior authorization approved - Authorization #PA-1764759164401-6",
+        "details": {
+          "authNumber": "PA-1764759164401-6",
+          "validUntil": "2026-03-03T10:52:44.401Z"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "Email"
+  },
+  {
+    "id": "ref-demo-08",
+    "patientFirstName": "Robert",
+    "patientLastName": "Davis",
+    "patientEmail": "robert.davis@email.com",
+    "age": 46,
+    "specialty": "Urology",
+    "payer": "UnitedHealthcare",
+    "plan": "UnitedHealthcare Standard Plan",
+    "status": "Pending",
+    "urgency": "urgent",
+    "appointmentDate": "2025-11-29T22:09:10.513Z",
+    "referralDate": "2025-11-09T22:11:51.641Z",
+    "noShowRisk": 56,
+    "providerName": "Dr. Rodriguez",
+    "facilityName": "Urology Center",
+    "reason": "Urinary tract issues",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-10T11:16:06.088Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-11T11:11:35.938Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "current",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-09T22:11:51.641Z",
+        "user": "Dr. Patricia Lee",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-10T11:16:06.088Z",
+        "user": "Mike Johnson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-10T22:06:02.139Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-11T11:11:35.938Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$75",
+          "coinsurance": "25%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-12T10:14:19.769Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-15T01:50:39.918Z",
+        "user": "UnitedHealthcare",
+        "description": "Prior authorization approved - Authorization #PA-1764759164401-7",
+        "details": {
+          "authNumber": "PA-1764759164401-7",
+          "validUntil": "2026-03-03T10:52:44.401Z"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "WhatsApp"
+  },
+  {
+    "id": "ref-demo-09",
+    "patientFirstName": "Linda",
+    "patientLastName": "Rodriguez",
+    "patientEmail": "linda.rodriguez@email.com",
+    "age": 50,
+    "specialty": "Ophthalmology",
+    "payer": "Kaiser Permanente",
+    "plan": "Kaiser Permanente Standard Plan",
+    "status": "Pending",
+    "urgency": "stat",
+    "appointmentDate": "2025-12-17T05:44:13.616Z",
+    "referralDate": "2025-11-25T11:15:29.383Z",
+    "noShowRisk": 52,
+    "providerName": "Dr. Martinez",
+    "facilityName": "Ophthalmology Center",
+    "reason": "Cataracts evaluation",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-26T10:27:18.238Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-27T13:01:38.696Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "current",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "upcoming",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "upcoming",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-25T11:15:29.383Z",
+        "user": "Linda Martinez",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-26T10:27:18.238Z",
+        "user": "Mike Johnson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-27T00:54:21.107Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-27T13:01:38.696Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$66",
+          "coinsurance": "37%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-28T23:37:11.116Z",
+        "user": "Mike Johnson",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-12-01T06:24:25.514Z",
+        "user": "Kaiser Permanente",
+        "description": "Prior authorization approved - Authorization #PA-1764759164401-8",
+        "details": {
+          "authNumber": "PA-1764759164401-8",
+          "validUntil": "2026-03-03T10:52:44.401Z"
+        }
+      }
+    ],
+    "messages": [],
+    "primaryChannel": "Phone"
+  },
+  {
+    "id": "ref-demo-10",
+    "patientFirstName": "Richard",
+    "patientLastName": "Martinez",
+    "patientEmail": "richard.martinez@email.com",
+    "age": 26,
+    "specialty": "ENT",
+    "payer": "Kaiser Permanente",
+    "plan": "Kaiser Permanente Standard Plan",
+    "status": "Scheduled",
+    "urgency": "routine",
+    "appointmentDate": "2025-12-09T00:37:26.390Z",
+    "referralDate": "2025-11-24T16:05:00.187Z",
+    "noShowRisk": 16,
+    "providerName": "Dr. Lee",
+    "facilityName": "ENT Center",
+    "reason": "Throat inflammation",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-26T02:31:53.504Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-27T12:45:08.958Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-11-28T17:01:46.001Z",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "completed",
+        "completedAt": "2025-11-29T12:44:33.781Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "current",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-24T16:05:00.187Z",
+        "user": "Mike Johnson",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-26T02:31:53.504Z",
+        "user": "Mike Johnson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-26T14:43:45.508Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-27T12:45:08.958Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$50",
+          "coinsurance": "19%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-28T01:03:33.123Z",
+        "user": "Linda Martinez",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-28T17:01:46.001Z",
+        "user": "Kaiser Permanente",
+        "description": "Prior authorization approved - Authorization #PA-1764759164401-9",
+        "details": {
+          "authNumber": "PA-1764759164401-9",
+          "validUntil": "2026-03-03T10:52:44.401Z"
+        }
+      },
+      {
+        "id": "log-7",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-11-29T12:44:33.781Z",
+        "user": "Mike Johnson",
+        "description": "Appointment scheduled for Tue Dec 09 2025"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "In-App",
+        "content": "Your appointment with Dr. Lee is scheduled for 12/9/2025. View details and directions in the app.",
+        "timestamp": "2025-11-29T13:03:07.603Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "richard.martinez@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "SMS",
+        "content": "Reminder: Your appointment with Dr. Lee is in 3 days on 12/9/2025. Reply CONFIRM to confirm or call us to reschedule.",
+        "timestamp": "2025-12-06T00:37:26.390Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "richard.martinez@email.com"
+      }
+    ],
+    "primaryChannel": "In-App"
+  },
+  {
+    "id": "ref-demo-11",
+    "patientFirstName": "Mary",
+    "patientLastName": "Lee",
+    "patientEmail": "mary.lee@email.com",
+    "age": 40,
+    "specialty": "Cardiology",
+    "payer": "Aetna",
+    "plan": "Aetna Standard Plan",
+    "status": "Scheduled",
+    "urgency": "urgent",
+    "appointmentDate": "2025-12-12T13:01:23.709Z",
+    "referralDate": "2025-11-30T06:20:26.375Z",
+    "noShowRisk": 68,
+    "providerName": "Dr. Patel",
+    "facilityName": "Cardiology Center",
+    "reason": "Hypertension management",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-12-01T09:39:02.804Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-12-02T18:22:46.530Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-12-03T20:46:30.978Z",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "completed",
+        "completedAt": "2025-12-05T04:50:24.748Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "current",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-30T06:20:26.375Z",
+        "user": "Linda Martinez",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-12-01T09:39:02.804Z",
+        "user": "Mike Johnson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-12-01T22:28:34.238Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-12-02T18:22:46.530Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$23",
+          "coinsurance": "16%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-12-03T09:45:49.974Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-12-03T20:46:30.978Z",
+        "user": "Aetna",
+        "description": "Prior authorization approved - Authorization #PA-1764759164445-10",
+        "details": {
+          "authNumber": "PA-1764759164445-10",
+          "validUntil": "2026-03-03T10:52:44.445Z"
+        }
+      },
+      {
+        "id": "log-7",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-12-05T04:50:24.748Z",
+        "user": "Dr. Patricia Lee",
+        "description": "Appointment scheduled for Fri Dec 12 2025"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "SMS",
+        "content": "Hi Mary Lee, your Cardiology appointment with Dr. Patel is scheduled for 12/12/2025 at 6:31:23 PM. Please reply YES to confirm.",
+        "timestamp": "2025-12-05T06:47:47.922Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "mary.lee@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "SMS",
+        "content": "YES",
+        "timestamp": "2025-12-07T16:31:02.566Z",
+        "status": "delivered",
+        "direction": "inbound",
+        "recipient": "mary.lee@email.com"
+      },
+      {
+        "id": "msg-3",
+        "channel": "Email",
+        "content": "Dear Mary Lee,\n\nReminder: You have an appointment coming up in 3 days:\n\nDate: Fri Dec 12 2025\nTime: 6:31:23 PM\nProvider: Dr. Patel\n\nNeed to reschedule? Reply to this email.",
+        "timestamp": "2025-12-09T13:01:23.709Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "mary.lee@email.com"
+      }
+    ],
+    "primaryChannel": "SMS"
+  },
+  {
+    "id": "ref-demo-12",
+    "patientFirstName": "Charles",
+    "patientLastName": "Patel",
+    "patientEmail": "charles.patel@email.com",
+    "age": 74,
+    "specialty": "Orthopedics",
+    "payer": "UnitedHealthcare",
+    "plan": "UnitedHealthcare Standard Plan",
+    "status": "Scheduled",
+    "urgency": "stat",
+    "appointmentDate": "2025-12-05T13:54:44.828Z",
+    "referralDate": "2025-11-24T16:43:42.511Z",
+    "noShowRisk": 40,
+    "providerName": "Dr. Taylor",
+    "facilityName": "Orthopedics Center",
+    "reason": "Shoulder injury",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-25T09:36:15.253Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-26T19:28:02.089Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-11-28T05:52:21.871Z",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "completed",
+        "completedAt": "2025-11-29T06:33:28.516Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "current",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-24T16:43:42.511Z",
+        "user": "Dr. Patricia Lee",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-25T09:36:15.253Z",
+        "user": "Sarah Chen",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-26T00:19:06.928Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-26T19:28:02.089Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$73",
+          "coinsurance": "23%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-27T22:49:18.335Z",
+        "user": "Linda Martinez",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-28T05:52:21.871Z",
+        "user": "UnitedHealthcare",
+        "description": "Prior authorization approved - Authorization #PA-1764759164446-11",
+        "details": {
+          "authNumber": "PA-1764759164446-11",
+          "validUntil": "2026-03-03T10:52:44.446Z"
+        }
+      },
+      {
+        "id": "log-7",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-11-29T06:33:28.516Z",
+        "user": "Mike Johnson",
+        "description": "Appointment scheduled for Fri Dec 05 2025"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "Email",
+        "content": "Dear Charles Patel,\n\nThis is to confirm your appointment:\n\nDate: Fri Dec 05 2025\nTime: 7:24:44 PM\nProvider: Dr. Taylor\nSpecialty: Orthopedics\n\nPlease bring your insurance card and valid ID.",
+        "timestamp": "2025-11-29T07:10:45.953Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "charles.patel@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "Email",
+        "content": "Confirmed",
+        "timestamp": "2025-12-01T19:11:42.070Z",
+        "status": "delivered",
+        "direction": "inbound",
+        "recipient": "charles.patel@email.com"
+      },
+      {
+        "id": "msg-3",
+        "channel": "SMS",
+        "content": "Reminder: Your appointment with Dr. Taylor is in 3 days on 12/5/2025. Reply CONFIRM to confirm or call us to reschedule.",
+        "timestamp": "2025-12-02T13:54:44.828Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "charles.patel@email.com"
+      }
+    ],
+    "primaryChannel": "Email"
+  },
+  {
+    "id": "ref-demo-13",
+    "patientFirstName": "Karen",
+    "patientLastName": "Taylor",
+    "patientEmail": "karen.taylor@email.com",
+    "age": 38,
+    "specialty": "Dermatology",
+    "payer": "Aetna",
+    "plan": "Aetna Standard Plan",
+    "status": "Completed",
+    "urgency": "stat",
+    "appointmentDate": "2025-11-30T01:02:45.363Z",
+    "referralDate": "2025-11-12T02:10:13.247Z",
+    "noShowRisk": 45,
+    "providerName": "Dr. Anderson",
+    "facilityName": "Dermatology Center",
+    "reason": "Acne management",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-12T23:19:39.335Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-13T23:44:13.863Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-11-15T08:56:36.068Z",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "completed",
+        "completedAt": "2025-11-16T09:56:32.881Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "completed",
+        "completedAt": "2025-11-17T17:06:12.437Z",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-12T02:10:13.247Z",
+        "user": "Mike Johnson",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-12T23:19:39.335Z",
+        "user": "Mike Johnson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-13T10:31:28.524Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-13T23:44:13.863Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$44",
+          "coinsurance": "34%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-14T12:21:01.535Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-15T08:56:36.068Z",
+        "user": "Aetna",
+        "description": "Prior authorization approved - Authorization #PA-1764759164446-12",
+        "details": {
+          "authNumber": "PA-1764759164446-12",
+          "validUntil": "2026-03-03T10:52:44.446Z"
+        }
+      },
+      {
+        "id": "log-7",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-11-16T09:56:32.881Z",
+        "user": "Mike Johnson",
+        "description": "Appointment scheduled for Sun Nov 30 2025"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "WhatsApp",
+        "content": "Hi Karen Taylor 👋 Your Dermatology appointment with Dr. Anderson on 11/30/2025 at 6:32:45 AM is confirmed. See you soon!",
+        "timestamp": "2025-11-16T10:09:46.216Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "karen.taylor@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "WhatsApp",
+        "content": "YES",
+        "timestamp": "2025-11-19T04:42:55.414Z",
+        "status": "delivered",
+        "direction": "inbound",
+        "recipient": "karen.taylor@email.com"
+      },
+      {
+        "id": "msg-3",
+        "channel": "SMS",
+        "content": "Reminder: Your appointment with Dr. Anderson is in 3 days on 11/30/2025. Reply CONFIRM to confirm or call us to reschedule.",
+        "timestamp": "2025-11-27T01:02:45.363Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "karen.taylor@email.com"
+      },
+      {
+        "id": "msg-4",
+        "channel": "In-App",
+        "content": "Thank you for attending your appointment! Please take a moment to rate your experience.",
+        "timestamp": "2025-11-30T13:11:22.050Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "karen.taylor@email.com"
+      }
+    ],
+    "primaryChannel": "WhatsApp"
+  },
+  {
+    "id": "ref-demo-14",
+    "patientFirstName": "Thomas",
+    "patientLastName": "Anderson",
+    "patientEmail": "thomas.anderson@email.com",
+    "age": 32,
+    "specialty": "Neurology",
+    "payer": "Kaiser Permanente",
+    "plan": "Kaiser Permanente Standard Plan",
+    "status": "Completed",
+    "urgency": "routine",
+    "appointmentDate": "2025-12-10T14:45:32.437Z",
+    "referralDate": "2025-11-10T06:10:50.116Z",
+    "noShowRisk": 44,
+    "providerName": "Dr. Thomas",
+    "facilityName": "Neurology Center",
+    "reason": "Numbness in extremities",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-10T21:47:09.984Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-12T01:10:30.713Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-11-13T08:23:01.106Z",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "completed",
+        "completedAt": "2025-11-13T23:55:12.485Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "completed",
+        "completedAt": "2025-11-15T06:22:42.516Z",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-10T06:10:50.116Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-10T21:47:09.984Z",
+        "user": "Dr. James Mitchell",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-11T14:30:14.765Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-12T01:10:30.713Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$40",
+          "coinsurance": "26%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-13T06:27:45.797Z",
+        "user": "Mike Johnson",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-13T08:23:01.106Z",
+        "user": "Kaiser Permanente",
+        "description": "Prior authorization approved - Authorization #PA-1764759164446-13",
+        "details": {
+          "authNumber": "PA-1764759164446-13",
+          "validUntil": "2026-03-03T10:52:44.446Z"
+        }
+      },
+      {
+        "id": "log-7",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-11-13T23:55:12.485Z",
+        "user": "Dr. James Mitchell",
+        "description": "Appointment scheduled for Wed Dec 10 2025"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "Phone",
+        "content": "[Automated call] Confirming your Neurology appointment with Dr. Thomas on 12/10/2025. Press 1 to confirm or 2 to reschedule.",
+        "timestamp": "2025-11-14T01:39:41.942Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "thomas.anderson@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "SMS",
+        "content": "Reminder: Your appointment with Dr. Thomas is in 3 days on 12/10/2025. Reply CONFIRM to confirm or call us to reschedule.",
+        "timestamp": "2025-12-07T14:45:32.437Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "thomas.anderson@email.com"
+      },
+      {
+        "id": "msg-3",
+        "channel": "In-App",
+        "content": "Thank you for attending your appointment! Please take a moment to rate your experience.",
+        "timestamp": "2025-12-11T02:09:08.620Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "thomas.anderson@email.com"
+      }
+    ],
+    "primaryChannel": "Phone"
+  },
+  {
+    "id": "ref-demo-15",
+    "patientFirstName": "Nancy",
+    "patientLastName": "Thomas",
+    "patientEmail": "nancy.thomas@email.com",
+    "age": 33,
+    "specialty": "Oncology",
+    "payer": "Cigna",
+    "plan": "Cigna Standard Plan",
+    "status": "Completed",
+    "urgency": "stat",
+    "appointmentDate": "2025-12-03T05:16:26.938Z",
+    "referralDate": "2025-11-26T10:31:23.831Z",
+    "noShowRisk": 56,
+    "providerName": "Dr. Johnson",
+    "facilityName": "Oncology Center",
+    "reason": "Cancer screening consultation",
+    "steps": [
+      {
+        "id": "step-1",
+        "label": "Intake",
+        "status": "completed",
+        "completedAt": "2025-11-26T23:09:55.020Z",
+        "description": "Initial referral received and processed"
+      },
+      {
+        "id": "step-2",
+        "label": "Eligibility",
+        "status": "completed",
+        "completedAt": "2025-11-28T06:24:46.791Z",
+        "description": "Insurance eligibility verified"
+      },
+      {
+        "id": "step-3",
+        "label": "Prior Authorization",
+        "status": "completed",
+        "completedAt": "2025-11-29T17:23:49.767Z",
+        "description": "Prior authorization approved for specialist consultation"
+      },
+      {
+        "id": "step-4",
+        "label": "Scheduled",
+        "status": "completed",
+        "completedAt": "2025-12-01T02:44:53.176Z",
+        "description": "Appointment scheduled with provider"
+      },
+      {
+        "id": "step-5",
+        "label": "Completed",
+        "status": "completed",
+        "completedAt": "2025-12-01T21:01:53.043Z",
+        "description": "Appointment attended"
+      }
+    ],
+    "actionLog": [
+      {
+        "id": "log-1",
+        "event": "Referral Created",
+        "type": "system",
+        "timestamp": "2025-11-26T10:31:23.831Z",
+        "user": "Sarah Chen",
+        "description": "Referral created by primary care physician",
+        "details": {
+          "source": "EHR Integration"
+        }
+      },
+      {
+        "id": "log-2",
+        "event": "Intake Completed",
+        "type": "user",
+        "timestamp": "2025-11-26T23:09:55.020Z",
+        "user": "Dr. Emma Wilson",
+        "description": "Patient demographics and insurance information verified"
+      },
+      {
+        "id": "log-3",
+        "event": "Eligibility Check Started",
+        "type": "eligibility",
+        "timestamp": "2025-11-27T11:26:35.932Z",
+        "user": "System",
+        "description": "Automated eligibility verification initiated"
+      },
+      {
+        "id": "log-4",
+        "event": "Eligibility Verified",
+        "type": "eligibility",
+        "timestamp": "2025-11-28T06:24:46.791Z",
+        "user": "System",
+        "description": "Insurance active, benefits confirmed",
+        "details": {
+          "copay": "$29",
+          "coinsurance": "39%"
+        }
+      },
+      {
+        "id": "log-5",
+        "event": "PA Request Submitted",
+        "type": "pa",
+        "timestamp": "2025-11-29T10:03:37.624Z",
+        "user": "Sarah Chen",
+        "description": "Prior authorization request submitted to payer"
+      },
+      {
+        "id": "log-6",
+        "event": "PA Approved",
+        "type": "pa",
+        "timestamp": "2025-11-29T17:23:49.767Z",
+        "user": "Cigna",
+        "description": "Prior authorization approved - Authorization #PA-1764759164446-14",
+        "details": {
+          "authNumber": "PA-1764759164446-14",
+          "validUntil": "2026-03-03T10:52:44.446Z"
+        }
+      },
+      {
+        "id": "log-7",
+        "event": "Appointment Scheduled",
+        "type": "scheduling",
+        "timestamp": "2025-12-01T02:44:53.176Z",
+        "user": "Dr. James Mitchell",
+        "description": "Appointment scheduled for Wed Dec 03 2025"
+      }
+    ],
+    "messages": [
+      {
+        "id": "msg-1",
+        "channel": "In-App",
+        "content": "Your appointment with Dr. Johnson is scheduled for 12/3/2025. View details and directions in the app.",
+        "timestamp": "2025-12-01T03:08:35.256Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "nancy.thomas@email.com"
+      },
+      {
+        "id": "msg-2",
+        "channel": "SMS",
+        "content": "Reminder: Your appointment with Dr. Johnson is in 3 days on 12/3/2025. Reply CONFIRM to confirm or call us to reschedule.",
+        "timestamp": "2025-11-30T05:16:26.938Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "nancy.thomas@email.com"
+      },
+      {
+        "id": "msg-3",
+        "channel": "In-App",
+        "content": "Thank you for attending your appointment! Please take a moment to rate your experience.",
+        "timestamp": "2025-12-03T11:06:48.224Z",
+        "status": "delivered",
+        "direction": "outbound",
+        "recipient": "nancy.thomas@email.com"
+      }
+    ],
+    "primaryChannel": "In-App"
+  }
+]
