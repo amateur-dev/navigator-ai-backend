@@ -297,12 +297,19 @@ app.post('/orchestrate', async (c) => {
     const insertQuery = `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) 
        VALUES ('${patientName.replace(/'/g, "''")}', ${sanitizedEmail}, ${sanitizedPhone}, '${referralReason.replace(/'/g, "''")}', '${insuranceProvider || ''}', ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
 
-    await db.executeQuery({ sqlQuery: insertQuery });
+    try {
+      const insertResult = await db.executeQuery({ sqlQuery: insertQuery });
+      console.log('Insert result:', insertResult);
+    } catch (insertError) {
+      console.error('INSERT error:', insertError, 'Query was:', insertQuery);
+    }
 
     // SQLite specific: Get last ID
     const idResult = await db.executeQuery({ sqlQuery: 'SELECT last_insert_rowid() as id' });
     const idRows = getRows(idResult);
+    console.log('ID result rows:', idRows);
     const referralId = idRows[0]?.id || 'unknown';
+    console.log('Referral ID extracted:', referralId);
 
     return c.json({
       success: true,

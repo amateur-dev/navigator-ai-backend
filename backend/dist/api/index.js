@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "8d0f1ec34323e54d3301e5762ca25d1886bf8646"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "4648dd7f31af9762b3d0ef1fc53c34926ca2fd7e"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1951,6 +1951,8 @@ app.post("/seed", async (c) => {
       CREATE TABLE IF NOT EXISTS referrals (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           patient_name TEXT NOT NULL,
+          patient_email TEXT,
+          patient_phone TEXT,
           dob TEXT,
           condition TEXT,
           insurance_provider TEXT,
