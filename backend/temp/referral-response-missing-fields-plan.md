@@ -1,0 +1,231 @@
+# Plan: Add missing keys to GET /referral/:id and /referrals responses
+
+Purpose: capture the full end-to-end plan that will add/persist the missing referral response fields we discovered earlier, explain why each field is needed, where it will come from, and the concrete implementation and test steps to deliver it safely in production.
+
+---
+
+## Summary
+We discovered that the production API and DB were returning only a subset of the referral details expected by the frontend and sample JSON. The missing top-level fields are:
+
+- age (or dob)
+- plan
+- urgency
+- providerName
+- facilityName
+- steps (array)
+- actionLog (array)
+- messages (array)
+
+This document explains how we'll implement persistence and surface these fields in the API responses, plus migration, tests, rollout, and security considerations.
+
+---
+
+## For each missing field / collection: objective, why, source, schema & API changes, tests, UX
+
+### 1) age (or dob)
+- Objective: show patient's age in referral details and use it for triage/priority logic.
+- Why: Age is key for clinical prioritization and UI summaries (e.g., display in list and details)
+- Where to get it: Prefer storing `dob` (date of birth) at ingestion (from extraction or manual input), compute `age` at read-time.
+- DB change: add `dob` (DATE / TEXT) column to `referrals` (we already added patient_email/phone). Keep both `dob` and a read-only computed `age` not stored, or store `age` snapshot if desired.
+- API change: return `age` (number) in GET /referral/:id and in each /referrals listing item (computed from `dob` server-side). If `dob` absent return `null`.
+- Tests: unit for `calculateAge()` function; e2e case where extracted PDF sets dob and ensure GET returns correct age.
+- UX: show in top-level referral details and row summary if present.
+
+---
+
+### 2) plan
+- Objective: surface patient's insurance plan name for billing/eligibility logic and display.
+- Why: Plan is necessary for accurate eligibility, prior authorization needs and for patient-facing messaging.
+- Where to get it: extraction (Vultr) or manual entry in UI on extraction review; /orchestrate should persist into DB.
+- DB change: add `plan` TEXT column to `referrals`.
+- API change: include `plan` in GET /referral/:id and in /referrals listing.
+- Tests: unit/extraction test with sample payload containing `plan`, e2e flow: upload->extract (with plan) -> orchestrate -> GET /referral/:id returns plan.
+
+---
+
+### 3) urgency
+- Objective: track if referral is `routine`, `urgent`, or `stat` for prioritization.
+- Why: triage and scheduler rules depend on urgency; UI highlights urgent referrals.
+- Where to get it: extraction or manual edit on review; /orchestrate persists.
+- DB change: add `urgency` TEXT column in `referrals` with a small enum-like constraint in app code (`routine|urgent|stat`).
+- API change: include `urgency` field in both GET endpoints.
+- Tests: ensure default `routine` when absent; e2e test that urgency flows through.
+
+---
+
+### 4) providerName and facilityName
+- Objective: store and display which provider/facility the referral is for.
+- Why: critical for patient directions, provider assignment, and messages.
+- Where to get it: extracted from referral or mapped from specialist selection; UI review may overwrite.
+- DB change: add `provider_name` and `facility_name` columns to `referrals`.
+- API change: surface these fields in GET /referral/:id and listing.
+- Tests: unit & e2e tests verifying persisted provider/facility values.
+
+---
+
+### 5) steps (workflow steps array)
+- Objective: capture structured workflow progress (Intake, Eligibility, PA, Scheduling, Completed) and their status/completedAt details.
+- Why: UI shows progress bar / timeline; orchestration engine updates steps as actions complete; useful for analytics and tracking.
+- Where to get it: created by /orchestrate flow (initial set), updated by micro-actions or workflow engine (Raindrop) as each step completes. Also possibly seeded by backend/manifest as default workflow per referral type.
+- DB change: add `steps` table (child of referrals):
+  - steps(id PRIMARY KEY, referral_id FK, "order" INTEGER, label TEXT, status TEXT, completed_at TEXT, description TEXT, created_at TEXT, updated_at TEXT)
+- API change: GET /referral/:id should include `steps`: array of step objects. The listing endpoint (/referrals) can include a summary `currentStep` or `completedStepsCount` to avoid large payloads.
+- Backend change: orchestration should insert default steps on referral creation (or derive from template) and update step rows when step transitions.
+- Tests: unit tests for step insertion and updates; e2e flows to observe step transitions and UI rendering.
+
+---
+
+### 6) actionLog (audit trail / event log)
+- Objective: provide a chronological record of events (automated or manual) related to a referral.
+- Why: compliance, troubleshooting, UI feed, and audit; also to show PA approvals, messages sent, eligibility checks etc.
+- Where to get it: generated by workflow processes (system), by user actions (created by API calls), and by external callbacks (payers, Twilio, etc.).
+- DB change: add `action_logs` table:
+  - action_logs(id PK, referral_id FK, event TEXT, type TEXT, timestamp TEXT, user TEXT, description TEXT, details JSON, created_at TEXT)
+- API change: include `actionLog` array in GET /referral/:id. Provide an extra endpoint GET /referral/:id/logs (existing in docs) to support pagination/filters.
+- Tests: unit tests for log creation, e2e test to ensure events are recorded on each major step (e.g., orchestrate -> PA request -> PA approved).
+
+---
+
+### 7) messages (communications history)
+- Objective: record the messages (inbound/outbound) for each referral.
+- Why: display conversation and notifications in UI and ensure auditability for patient communications.
+- Where to get it: created by messaging service integrations (Twilio/SendGrid) and by inbound webhook handlers. Also created on orchestrate/confirm flows.
+- DB change: add `messages` table:
+  - messages(id PK, referral_id FK, channel TEXT, content TEXT, timestamp TEXT, status TEXT, direction TEXT, recipient TEXT, metadata JSON, created_at TEXT)
+- API change: include `messages` array in GET /referral/:id. Support GET /referral/:id/messages or pagination if long.
+- Tests: e2e tests sending/receiving message flows; verify messages persisted and returned.
+
+---
+
+## Migration strategy
+- Use proper migration SQL files (NOT destructive by default). Recommended approach:
+  1. Create migration that adds columns to `referrals` table: `patient_email`, `patient_phone`, `plan`, `urgency`, `provider_name`, `facility_name`, `dob`.
+  2. Create new tables for steps, action_logs, messages (with indexes on referral_id).
+  3. For production where existing table is present, use `ALTER TABLE` to add columns. For environments created by /seed or local dev, /seed can drop & recreate tables as currently implemented (but be careful with production data).
+  4. Add backwards-compatible migration (no breaking changes). Deploy migrations first (schema), then deploy code to read/write new fields.
+
+Example migration (pseudo SQL):
+```sql
+ALTER TABLE referrals ADD COLUMN patient_email TEXT;
+ALTER TABLE referrals ADD COLUMN patient_phone TEXT;
+ALTER TABLE referrals ADD COLUMN plan TEXT;
+ALTER TABLE referrals ADD COLUMN urgency TEXT DEFAULT 'routine';
+ALTER TABLE referrals ADD COLUMN provider_name TEXT;
+ALTER TABLE referrals ADD COLUMN facility_name TEXT;
+ALTER TABLE referrals ADD COLUMN dob TEXT;
+
+CREATE TABLE IF NOT EXISTS steps (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  referral_id INTEGER NOT NULL,
+  "order" INTEGER,
+  label TEXT,
+  status TEXT,
+  description TEXT,
+  completed_at TEXT,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+  updated_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS action_logs (
+  id TEXT PRIMARY KEY,
+  referral_id INTEGER NOT NULL,
+  event TEXT,
+  type TEXT,
+  timestamp TEXT,
+  user TEXT,
+  description TEXT,
+  details JSON,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id TEXT PRIMARY KEY,
+  referral_id INTEGER NOT NULL,
+  channel TEXT,
+  content TEXT,
+  timestamp TEXT,
+  status TEXT,
+  direction TEXT,
+  recipient TEXT,
+  metadata JSON,
+  created_at TEXT DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+---
+
+## Code changes required (files/locations)
+- `backend/src/db/schema.sql` — add migration SQL (already updated earlier for patient_email/phone)
+- `backend/src/api/index.ts` —
+  - `POST /orchestrate`: save email/phone/plan/urgency/provider/facility/dob and create step rows & initial action_log entries
+  - `POST /extract`: return extracted patientEmail / patientPhoneNumber and pass them to orchestration persistence
+  - `GET /referrals`: select and map new columns: patient_email -> patientEmail, patient_phone -> patientPhoneNumber, plan, urgency, provider_name -> providerName, facility_name -> facilityName; optionally add current step summary
+  - `GET /referral/:id`: join (or execute multiple queries) to return: steps (list), actionLog, messages along with top-level fields
+  - `POST /seed`: ensure the local seed creates new tables with updated schema (or use migrations)
+
+- `backend/test-e2e.mjs` — add/extend tests to cover missing keys and flows
+- Frontend (if relevant): update data model & pages to accept and render these fields
+
+---
+
+## Tests & QA plan
+1. Unit tests:
+   - Functions: age calculation, DB mapping, validation for `urgency` enum
+2. Integration tests:
+   - Orchestrate creates referrals with email/phone/plan/urgency/provider/facility and creates initial steps & logs
+   - Extract returns expected fields when extraction contains them
+3. e2e test on production:
+   - Upload sample doc -> extract -> fill in missing email/phone -> orchestrate -> GET /referrals and /referral/:id show all fields
+4. Backfill test: ensure older referrals without new fields read as `null` and don't crash
+
+---
+
+## Rollout + Monitoring
+- Deploy migration to production during maintenance window (if production DB must be altered in place). Prefer zero-downtime migrations if possible.
+- Deploy new server code to read/write fields after migration is applied.
+- Monitor logs for SQL errors related to missing columns and error rates on /orchestrate and /referrals.
+- Add sanity checks in health check to confirm `SELECT count(*)` works for new tables or columns.
+
+---
+
+## Security & Privacy
+- These are PHI/PII fields. Ensure:
+  - DB (SmartSQL) encryption at rest is enabled by default via platform
+  - Access to API endpoints limited to authenticated users in production
+  - Audit logs record reads/writes of PII (action_logs are helpful for audit)
+  - Avoid exposing more sensitive data in listing endpoints than necessary (e.g., full messages in listing when not required)
+
+---
+
+## Timeline / Work breakdown (example estimate)
+1. Migrations & schema (1 day) — write SQL migrations and add to repo
+2. Implement persistence (1 day) — orchestrate insertion + extract changes
+3. Implement reads (GET /referrals, GET /referral/:id) (1 day) — join queries and serialization
+4. Add steps/action_log/messages support (1–2 days) — DB, insert & updates, tests
+5. Tests & QA (1 day) — unit, integration, e2e runs, manual QA
+6. Deploy & monitor (0.5 day)
+
+---
+
+## Acceptance criteria (done when)
+- Database schema has new columns and new tables deployed safely
+- API writes and reads patientEmail and patientPhoneNumber for orchestrated referrals
+- GET /referral/:id returns steps, actionLog and messages arrays and top-level fields as documented
+- e2e test passes for flows that include these fields
+- No regressions in existing endpoints
+
+---
+
+## Notes & open questions
+- Do we want to store `age` or `dob`? I recommend `dob` and compute `age` dynamically.
+- Steps might be templates based on specialty/urgency — decide if steps are static per referral or dynamic
+- Action logs and messages could grow large — consider pagination and retention policies if needed.
+
+---
+
+If you want, I can now: (pick one)
+- Draft the SQL migration files for the schema changes (safe ALTER statements), or
+- Implement the `GET /referral/:id` serialization to include `steps`, `actionLog`, `messages` (read-only first), or
+- Create a branch and a PR with the full implementation plus tests and e2e verification.
+
+Pick a next step and I’ll proceed.
