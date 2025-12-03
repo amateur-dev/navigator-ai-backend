@@ -17,6 +17,8 @@ CREATE TABLE IF NOT EXISTS slots (
 CREATE TABLE IF NOT EXISTS referrals (
     id SERIAL PRIMARY KEY,
     patient_name VARCHAR(255) NOT NULL,
+    patient_email VARCHAR(255),
+    patient_phone VARCHAR(20),
     dob DATE,
     condition TEXT,
     insurance_provider VARCHAR(100),

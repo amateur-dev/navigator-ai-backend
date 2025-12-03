@@ -176,10 +176,10 @@ app.post('/extract', async (c) => {
         extractedData: {
           patientFirstName: extractedData.patientName?.split(' ')[0] || 'Unknown',
           patientLastName: extractedData.patientName?.split(' ').slice(1).join(' ') || 'Unknown',
-          patientEmail: 'unknown@example.com', // Not in doc
-          patientPhoneNumber: extractedData.patientPhoneNumber || 'Not Available',
+          patientEmail: extractedData.patientEmail || null,
+          patientPhoneNumber: extractedData.patientPhoneNumber || null,
           age: extractedData.dateOfBirth ? calculateAge(extractedData.dateOfBirth) : null,
-          specialty: determineSpecialty(extractedData.referralReason || ''), // Use our logic or the extracted one? User asked for format. Let's use our logic for consistency or the extracted one if valid.
+          specialty: determineSpecialty(extractedData.referralReason || ''),
           payer: extractedData.insuranceProvider || 'Unknown',
           plan: extractedData.plan || 'Unknown',
           urgency: extractedData.urgency || 'routine',
@@ -189,7 +189,7 @@ app.post('/extract', async (c) => {
           facilityName: 'Unknown',
           reason: extractedData.referralReason || 'Unknown'
         },
-        confidence: 1.0, // Deterministic extraction
+        confidence: 1.0,
         documentId: id,
         needsReview: false,
         warnings: []
@@ -227,7 +227,7 @@ function calculateAge(dateOfBirth: string): number | null {
 app.post('/orchestrate', async (c) => {
   try {
     const body = await c.req.json();
-    const { patientName, referralReason, insuranceProvider } = body;
+    const { patientName, patientEmail, patientPhoneNumber, referralReason, insuranceProvider } = body;
 
     if (!patientName || !referralReason) {
       return c.json({
@@ -291,9 +291,11 @@ app.post('/orchestrate', async (c) => {
       availableSlots = slots.map((slot: any) => slot.start_time);
     }
 
-    // 4. Create Referral Record in DB
-    const insertQuery = `INSERT INTO referrals (patient_name, condition, insurance_provider, specialist_id, status) 
-       VALUES ('${patientName}', '${referralReason}', '${insuranceProvider}', ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
+    // 4. Create Referral Record in DB (now with email and phone)
+    const sanitizedEmail = patientEmail ? `'${patientEmail.replace(/'/g, "''")}'` : 'NULL';
+    const sanitizedPhone = patientPhoneNumber ? `'${patientPhoneNumber.replace(/'/g, "''")}'` : 'NULL';
+    const insertQuery = `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) 
+       VALUES ('${patientName.replace(/'/g, "''")}', ${sanitizedEmail}, ${sanitizedPhone}, '${referralReason.replace(/'/g, "''")}', '${insuranceProvider || ''}', ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
 
     await db.executeQuery({ sqlQuery: insertQuery });
 
@@ -541,10 +543,9 @@ app.get('/referrals', async (c) => {
       id: `ref-${row.id}`,
       patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
       patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
-      // Pull phone number from row if available (column name: patient_phone) and expose explicitly
       patientPhoneNumber: row.patient_phone || null,
-      patientEmail: 'unknown@example.com',
-      specialty: 'Unknown', // Placeholder until we join
+      patientEmail: row.patient_email || null,
+      specialty: 'Unknown',
       payer: row.insurance_provider || 'Unknown',
       status: row.status || 'Pending',
       appointmentDate: null,
@@ -616,14 +617,13 @@ app.get('/referral/:id', async (c) => {
           patientFirstName: row.patient_name ? row.patient_name.split(' ')[0] : 'Unknown',
           patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
           patientPhoneNumber: row.patient_phone || null,
-          patientEmail: 'unknown@example.com',
+          patientEmail: row.patient_email || null,
           specialty: 'Unknown',
           payer: row.insurance_provider || 'Unknown',
           status: row.status || 'Pending',
           appointmentDate: null,
           referralDate: row.created_at,
           noShowRisk: 0,
-          // Add other fields as needed
           reason: row.condition
         }
       });
