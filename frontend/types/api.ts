@@ -44,7 +44,7 @@ export interface Referral {
   specialty: string
   payer: string
   status: 'Pending' | 'Scheduled' | 'Completed' | 'Cancelled'
-  appointmentDate: string
+  appointmentDate: string | null
   referralDate: string
   noShowRisk: number
 }

@@ -124,7 +124,14 @@ export const referralsColumns: ColumnDef<Referral>[] = [
     minSize: 160,
     maxSize: 200,
     cell: ({ row }) => {
-      const date = new Date(row.getValue('appointmentDate'))
+      const appointmentDateValue = row.getValue('appointmentDate')
+      if (appointmentDateValue === null || appointmentDateValue === undefined || appointmentDateValue === '') {
+        return <div className="text-sm px-3 text-muted-foreground">Not scheduled</div>
+      }
+      const date = new Date(appointmentDateValue as string)
+      if (isNaN(date.getTime())) {
+        return <div className="text-sm px-3 text-muted-foreground">Not scheduled</div>
+      }
       return (
         <div className="text-sm px-3">
           <div className="font-medium">
@@ -145,7 +152,14 @@ export const referralsColumns: ColumnDef<Referral>[] = [
       )
     },
     filterFn: (row, id, value) => {
-      const appointmentDate = new Date(row.getValue(id))
+      const appointmentDateValue = row.getValue(id)
+      if (appointmentDateValue === null || appointmentDateValue === undefined || appointmentDateValue === '') {
+        return false
+      }
+      const appointmentDate = new Date(appointmentDateValue as string)
+      if (isNaN(appointmentDate.getTime())) {
+        return false
+      }
       const today = new Date()
       today.setHours(0, 0, 0, 0)
 
