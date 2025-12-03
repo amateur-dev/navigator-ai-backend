@@ -185,9 +185,7 @@ export const useReferralUpload = () => {
       return result as OrchestrationResponse;
     },
     onSuccess: (data, patientData) => {
-      toast.success(
-        `Matched with ${data.data?.assignedDoctor || "specialist"}`
-      );
+      // Toast will be shown when progress step completes
       setOrchestrationData(data);
 
       // Automatically trigger confirmation

@@ -194,6 +194,34 @@ export const ReferralFlowWithProgress = () => {
     },
   });
 
+  // Track toasts to prevent duplicates
+  const doctorMatchedToastShownRef = React.useRef(false);
+
+  // Show "Matched with doctor" toast when the "found-doctor" step completes
+  React.useEffect(() => {
+    // Use steps from the progress hook, not the state variable
+    const foundDoctorStep = orchestrationProgress.steps
+      .find((step) => step.id === "looking-doctors")
+      ?.substeps?.find((substep) => substep.id === "found-doctor");
+
+    if (
+      foundDoctorStep?.status === "completed" &&
+      !doctorMatchedToastShownRef.current
+    ) {
+      // Use dynamicValue from step or fallback to orchestrationData
+      const doctorName =
+        foundDoctorStep.dynamicValue ||
+        orchestrationData?.data?.assignedDoctor ||
+        "specialist";
+
+      // Only show if we have a valid doctor name (not placeholder)
+      if (doctorName && !doctorName.includes("Searching")) {
+        toast.success(`Matched with ${doctorName}`);
+        doctorMatchedToastShownRef.current = true;
+      }
+    }
+  }, [orchestrationProgress.steps, orchestrationData]);
+
   // Show appointment confirmed toast only after orchestration progress completes
   React.useEffect(() => {
     if (
@@ -259,6 +287,7 @@ export const ReferralFlowWithProgress = () => {
     setOrchestrationProgressComplete(false);
     setOrchestrationSteps(createOrchestrationSteps());
     toastShownRef.current = false;
+    doctorMatchedToastShownRef.current = false;
     uploadProgress.reset();
     orchestrationProgress.reset();
     resetAll();
