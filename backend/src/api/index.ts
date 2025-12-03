@@ -42,6 +42,34 @@ export function determineSpecialty(referralReason: string): string {
 // Create Hono app with middleware
 const app = new Hono<{ Bindings: Env }>();
 
+// Logging utility for referral events
+async function logReferralEvent(
+  db: any,
+  referralId: number | string,
+  event: string,
+  type: 'system' | 'user' | 'eligibility' | 'pa' | 'scheduling' | 'message',
+  description: string,
+  user: string = 'system',
+  details: Record<string, any> | null = null
+): Promise<void> {
+  try {
+    const sanitizedEvent = `'${event.replace(/'/g, "''")}'`;
+    const sanitizedDescription = `'${description.replace(/'/g, "''")}'`;
+    const sanitizedUser = `'${user.replace(/'/g, "''")}'`;
+    const detailsJson = details ? `'${JSON.stringify(details).replace(/'/g, "''")}'` : 'NULL';
+    
+    const insertQuery = `
+      INSERT INTO referral_logs (referral_id, event, type, timestamp, user, description, details)
+      VALUES (${referralId}, ${sanitizedEvent}, '${type}', datetime('now'), ${sanitizedUser}, ${sanitizedDescription}, ${detailsJson})
+    `;
+    
+    await db.executeQuery({ sqlQuery: insertQuery });
+  } catch (error) {
+    console.error('[ERROR] Failed to log referral event:', error);
+    // Don't throw - logging failures shouldn't break the application
+  }
+}
+
 // Add request logging middleware
 app.use('*', logger());
 
@@ -316,6 +344,24 @@ app.post('/orchestrate', async (c) => {
     const referralId = idRows[0]?.id || 'unknown';
     console.log('[DEBUG] Referral ID extracted:', referralId);
 
+    // Log the referral creation
+    if (referralId !== 'unknown') {
+      await logReferralEvent(
+        db,
+        referralId,
+        'Referral Created',
+        'system',
+        'Referral created through orchestration engine',
+        'system',
+        {
+          patientName,
+          referralReason,
+          specialty,
+          insuranceProvider
+        }
+      );
+    }
+
     return c.json({
       success: true,
       data: {
@@ -367,6 +413,7 @@ app.post('/seed', async (c) => {
 
     // 1. Drop existing tables if they exist (to force migration)
     try {
+      await db.executeQuery({ sqlQuery: 'DROP TABLE IF EXISTS referral_logs' });
       await db.executeQuery({ sqlQuery: 'DROP TABLE IF EXISTS slots' });
       await db.executeQuery({ sqlQuery: 'DROP TABLE IF EXISTS referrals' });
       await db.executeQuery({ sqlQuery: 'DROP TABLE IF EXISTS specialists' });
@@ -412,7 +459,22 @@ app.post('/seed', async (c) => {
       );
     `});
 
+    await db.executeQuery({
+      sqlQuery: `
+      CREATE TABLE IF NOT EXISTS referral_logs (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          referral_id INTEGER NOT NULL REFERENCES referrals(id) ON DELETE CASCADE,
+          event TEXT NOT NULL,
+          type TEXT NOT NULL,
+          timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+          user TEXT DEFAULT 'system',
+          description TEXT,
+          details TEXT
+      );
+    `});
+
     // 2. Clear existing data
+    await db.executeQuery({ sqlQuery: 'DELETE FROM referral_logs' });
     await db.executeQuery({ sqlQuery: 'DELETE FROM slots' });
     await db.executeQuery({ sqlQuery: 'DELETE FROM referrals' });
     await db.executeQuery({ sqlQuery: 'DELETE FROM specialists' });
@@ -570,9 +632,80 @@ app.post('/seed', async (c) => {
       const sanitizedCondition = `'${ref.condition.replace(/'/g, "''")}'`;
       const sanitizedPayer = `'${ref.payer.replace(/'/g, "''")}'`;
 
-      await db.executeQuery({
+      const insertRes = await db.executeQuery({
         sqlQuery: `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedCondition}, ${sanitizedPayer}, ${specialistId}, '${status}')`
       });
+      
+      // Get the inserted referral ID
+      const idRes = await db.executeQuery({ sqlQuery: 'SELECT last_insert_rowid() as id' });
+      const idRows = getRows(idRes);
+      const refId = idRows[0]?.id;
+      
+      // Add initial log for the referral
+      if (refId) {
+        await logReferralEvent(
+          db,
+          refId,
+          'Referral Created',
+          'system',
+          `Referral created for ${ref.name} - ${ref.condition}`,
+          'system',
+          { specialty: ref.specialty, payer: ref.payer }
+        );
+        
+        // Add status-specific logs
+        if (status === 'Scheduled' || status === 'Completed') {
+          await logReferralEvent(
+            db,
+            refId,
+            'Eligibility Verified',
+            'eligibility',
+            'Insurance coverage confirmed',
+            'system'
+          );
+        }
+        
+        if (status === 'Scheduled' || status === 'Completed') {
+          await logReferralEvent(
+            db,
+            refId,
+            'PA Request Submitted',
+            'pa',
+            'Prior authorization request submitted to payer',
+            'system'
+          );
+          await logReferralEvent(
+            db,
+            refId,
+            'PA Approved',
+            'pa',
+            'Prior authorization approved by payer',
+            'system'
+          );
+        }
+        
+        if (status === 'Scheduled' || status === 'Completed') {
+          await logReferralEvent(
+            db,
+            refId,
+            'Appointment Scheduled',
+            'scheduling',
+            'Appointment scheduled with specialist',
+            'system'
+          );
+        }
+        
+        if (status === 'Completed') {
+          await logReferralEvent(
+            db,
+            refId,
+            'Appointment Completed',
+            'scheduling',
+            'Patient attended scheduled appointment',
+            'system'
+          );
+        }
+      }
     }
 
     return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists and 15 demo referrals` });
@@ -878,15 +1011,101 @@ app.get('/referral/:id', async (c) => {
 });
 
 // Get referral logs
-app.get('/referral/:id/logs', (c) => {
-  // For now, return empty logs or implement DB logs table
-  return c.json({
-    success: true,
-    data: {
-      referralId: c.req.param('id'),
-      logs: []
+app.get('/referral/:id/logs', async (c) => {
+  try {
+    const referralIdParam = c.req.param('id');
+    // Extract numeric ID from format like 'ref-123'
+    const numericId = referralIdParam.startsWith('ref-') 
+      ? referralIdParam.substring(4) 
+      : referralIdParam;
+
+    const db = c.env.REFERRALS_DB as any;
+    
+    // Verify referral exists
+    const refResult = await db.executeQuery({
+      sqlQuery: `SELECT id FROM referrals WHERE id = ${numericId}`
+    });
+    
+    const getRows = (result: any) => {
+      if (Array.isArray(result)) return result;
+      if (result && result.results) {
+        if (Array.isArray(result.results)) return result.results;
+        if (typeof result.results === 'string') {
+          try {
+            return JSON.parse(result.results);
+          } catch (e) {
+            return [];
+          }
+        }
+      }
+      if (result && Array.isArray(result.rows)) return result.rows;
+      return [];
+    };
+    
+    const refRows = getRows(refResult);
+    if (refRows.length === 0) {
+      return c.json({
+        success: false,
+        error: {
+          code: 'REFERRAL_NOT_FOUND',
+          message: `Referral with ID '${referralIdParam}' not found`,
+          statusCode: 404
+        }
+      }, 404);
     }
-  });
+
+    // Fetch logs for this referral, ordered by timestamp descending
+    const logsResult = await db.executeQuery({
+      sqlQuery: `
+        SELECT id, event, type, timestamp, user, description, details
+        FROM referral_logs
+        WHERE referral_id = ${numericId}
+        ORDER BY timestamp DESC
+      `
+    });
+
+    const logsRows = getRows(logsResult);
+    
+    // Parse logs and handle details JSON
+    const logs = logsRows.map((row: any) => ({
+      id: `log-${row.id}`,
+      event: row.event,
+      type: row.type,
+      timestamp: row.timestamp,
+      user: row.user || 'system',
+      description: row.description,
+      details: row.details ? (() => {
+        try {
+          return typeof row.details === 'string' ? JSON.parse(row.details) : row.details;
+        } catch (e) {
+          return null;
+        }
+      })() : null
+    }));
+
+    return c.json({
+      success: true,
+      data: {
+        referralId: referralIdParam,
+        logs: logs,
+        pagination: {
+          total: logs.length,
+          page: 1,
+          pageSize: logs.length
+        }
+      }
+    });
+  } catch (error) {
+    console.error('[ERROR] Failed to fetch referral logs:', error);
+    return c.json({
+      success: false,
+      error: {
+        code: 'FETCH_LOGS_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to fetch referral logs',
+        statusCode: 500
+      }
+    }, 500);
+  }
 });
 
 // Patient Confirmation endpoint
