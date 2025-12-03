@@ -294,22 +294,27 @@ app.post('/orchestrate', async (c) => {
     // 4. Create Referral Record in DB (now with email and phone)
     const sanitizedEmail = patientEmail ? `'${patientEmail.replace(/'/g, "''")}'` : 'NULL';
     const sanitizedPhone = patientPhoneNumber ? `'${patientPhoneNumber.replace(/'/g, "''")}'` : 'NULL';
-    const insertQuery = `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) 
-       VALUES ('${patientName.replace(/'/g, "''")}', ${sanitizedEmail}, ${sanitizedPhone}, '${referralReason.replace(/'/g, "''")}', '${insuranceProvider || ''}', ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
+    const sanitizedName = `'${patientName.replace(/'/g, "''")}'`;
+    const sanitizedReason = `'${referralReason.replace(/'/g, "''")}'`;
+    const sanitizedInsurer = insuranceProvider ? `'${insuranceProvider.replace(/'/g, "''")}'` : 'NULL';
+    
+    const insertQuery = `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedReason}, ${sanitizedInsurer}, ${selectedSpecialist ? selectedSpecialist.id : 'NULL'}, 'Pending')`;
 
+    console.log('[DEBUG] Executing INSERT:', insertQuery);
     try {
       const insertResult = await db.executeQuery({ sqlQuery: insertQuery });
-      console.log('Insert result:', insertResult);
+      console.log('[DEBUG] Insert result:', JSON.stringify(insertResult));
     } catch (insertError) {
-      console.error('INSERT error:', insertError, 'Query was:', insertQuery);
+      console.error('[ERROR] INSERT failed:', insertError, 'Query:', insertQuery);
     }
 
     // SQLite specific: Get last ID
+    console.log('[DEBUG] Getting last_insert_rowid()...');
     const idResult = await db.executeQuery({ sqlQuery: 'SELECT last_insert_rowid() as id' });
     const idRows = getRows(idResult);
-    console.log('ID result rows:', idRows);
+    console.log('[DEBUG] ID result rows:', JSON.stringify(idRows));
     const referralId = idRows[0]?.id || 'unknown';
-    console.log('Referral ID extracted:', referralId);
+    console.log('[DEBUG] Referral ID extracted:', referralId);
 
     return c.json({
       success: true,
