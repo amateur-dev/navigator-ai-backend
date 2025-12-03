@@ -706,14 +706,16 @@ app.get('/referral/:id', async (c) => {
     if (rows.length > 0) {
       const row = rows[0];
       
-      // Get specialty from specialists table
+      // Get specialist info (name and specialty)
       let specialty = 'Unknown';
+      let providerName = 'Unknown';
       if (row.specialist_id) {
         const specRes = await db.executeQuery({
-          sqlQuery: `SELECT specialty FROM specialists WHERE id = ${row.specialist_id}`
+          sqlQuery: `SELECT name, specialty FROM specialists WHERE id = ${row.specialist_id}`
         });
         const specRow = getRows(specRes)[0];
         if (specRow?.specialty) { specialty = specRow.specialty; }
+        if (specRow?.name) { providerName = specRow.name; }
       }
       
       // Determine workflow steps based on status
@@ -738,6 +740,81 @@ app.get('/referral/:id', async (c) => {
         { id: 'step-5', label: 'Completed', status: getStepStatus(5, currentStatus), description: 'Appointment attended' }
       ];
       
+      // Mock messages data for Messages tab
+      const messages = [
+        {
+          id: 'msg-1',
+          type: 'SMS',
+          direction: 'outbound',
+          status: 'delivered',
+          timestamp: new Date(Date.now() - 2*24*60*60*1000).toISOString(),
+          content: `Hello ${row.patient_name}, your referral has been received. We will contact you shortly to schedule your ${specialty} appointment.`,
+          channel: 'SMS'
+        },
+        {
+          id: 'msg-2',
+          type: 'Email',
+          direction: 'outbound',
+          status: 'delivered',
+          timestamp: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+          content: `Referral confirmation for ${specialty} specialist visit. Please check your insurance details with your payer: ${row.insurance_provider}`,
+          channel: 'Email'
+        },
+        {
+          id: 'msg-3',
+          type: 'In-App',
+          direction: 'inbound',
+          status: 'read',
+          timestamp: new Date(Date.now() - 12*60*60*1000).toISOString(),
+          content: 'Yes, I can confirm my information is correct.',
+          channel: 'In-App'
+        }
+      ];
+      
+      // Mock scheduling data
+      const scheduling = {
+        appointmentDate: currentStatus === 'Completed' ? new Date(Date.now() - 5*24*60*60*1000).toISOString() : 
+                        currentStatus === 'Scheduled' ? new Date(Date.now() + 7*24*60*60*1000).toISOString() : null,
+        timeSlot: currentStatus !== 'Pending' ? '10:30 AM - 11:00 AM' : null,
+        location: currentStatus !== 'Pending' ? 'Medical Center, Suite 420' : null,
+        provider: providerName,
+        notes: currentStatus === 'Completed' ? 'Appointment completed successfully' : 'Pending confirmation'
+      };
+      
+      // Determine urgency based on condition
+      const urgencyMap: Record<string, string> = {
+        'chest': 'High',
+        'heart': 'High',
+        'severe': 'High',
+        'acute': 'High',
+        'emergency': 'High',
+        'chronic': 'Medium',
+        'regular': 'Low',
+        'routine': 'Low'
+      };
+      
+      let urgency = 'Medium';
+      const conditionLower = (row.condition || '').toLowerCase();
+      for (const [key, level] of Object.entries(urgencyMap)) {
+        if (conditionLower.includes(key)) {
+          urgency = level;
+          break;
+        }
+      }
+      
+      // Insurance plans based on payer
+      const plans: Record<string, string> = {
+        'Blue Cross Blue Shield': 'PPO Plan',
+        'UnitedHealthcare': 'HMO Plus',
+        'Aetna': 'EPO Standard',
+        'Cigna': 'Preferred Plus',
+        'Kaiser Permanente': 'Comprehensive Care',
+        'Humana': 'Silver Plan',
+        'Anthem Blue Cross PPO': 'PPO Advantage'
+      };
+      
+      const plan = plans[row.insurance_provider] || 'Standard Plan';
+      
       return c.json({
         success: true,
         data: {
@@ -748,12 +825,18 @@ app.get('/referral/:id', async (c) => {
           patientEmail: row.patient_email || null,
           specialty: specialty,
           payer: row.insurance_provider || 'Unknown',
+          plan: plan,
+          provider: providerName,
+          facility: 'Medical Center',
           status: row.status || 'Pending',
-          appointmentDate: null,
+          urgency: urgency,
+          appointmentDate: scheduling.appointmentDate,
           referralDate: row.created_at,
           noShowRisk: 0,
           reason: row.condition,
-          steps: steps
+          steps: steps,
+          messages: messages,
+          scheduling: scheduling
         }
       });
     }
