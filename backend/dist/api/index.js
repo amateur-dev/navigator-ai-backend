@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "ed00b671e5b2effb0d449724a3b00daec90f064f"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "8d0f1ec34323e54d3301e5762ca25d1886bf8646"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1787,12 +1787,10 @@ app.post("/extract", async (c) => {
         extractedData: {
           patientFirstName: extractedData.patientName?.split(" ")[0] || "Unknown",
           patientLastName: extractedData.patientName?.split(" ").slice(1).join(" ") || "Unknown",
-          patientEmail: "unknown@example.com",
-          // Not in doc
-          patientPhoneNumber: extractedData.patientPhoneNumber || "Not Available",
+          patientEmail: extractedData.patientEmail || null,
+          patientPhoneNumber: extractedData.patientPhoneNumber || null,
           age: extractedData.dateOfBirth ? calculateAge(extractedData.dateOfBirth) : null,
           specialty: determineSpecialty(extractedData.referralReason || ""),
-          // Use our logic or the extracted one? User asked for format. Let's use our logic for consistency or the extracted one if valid.
           payer: extractedData.insuranceProvider || "Unknown",
           plan: extractedData.plan || "Unknown",
           urgency: extractedData.urgency || "routine",
@@ -1803,7 +1801,6 @@ app.post("/extract", async (c) => {
           reason: extractedData.referralReason || "Unknown"
         },
         confidence: 1,
-        // Deterministic extraction
         documentId: id,
         needsReview: false,
         warnings: []
@@ -1836,7 +1833,7 @@ function calculateAge(dateOfBirth) {
 app.post("/orchestrate", async (c) => {
   try {
     const body = await c.req.json();
-    const { patientName, referralReason, insuranceProvider } = body;
+    const { patientName, patientEmail, patientPhoneNumber, referralReason, insuranceProvider } = body;
     if (!patientName || !referralReason) {
       return c.json({
         success: false,
@@ -1880,8 +1877,10 @@ app.post("/orchestrate", async (c) => {
       const slots = getRows(slotsResult);
       availableSlots = slots.map((slot) => slot.start_time);
     }
-    const insertQuery = `INSERT INTO referrals (patient_name, condition, insurance_provider, specialist_id, status) 
-       VALUES ('${patientName}', '${referralReason}', '${insuranceProvider}', ${selectedSpecialist ? selectedSpecialist.id : "NULL"}, 'Pending')`;
+    const sanitizedEmail = patientEmail ? `'${patientEmail.replace(/'/g, "''")}'` : "NULL";
+    const sanitizedPhone = patientPhoneNumber ? `'${patientPhoneNumber.replace(/'/g, "''")}'` : "NULL";
+    const insertQuery = `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) 
+       VALUES ('${patientName.replace(/'/g, "''")}', ${sanitizedEmail}, ${sanitizedPhone}, '${referralReason.replace(/'/g, "''")}', '${insuranceProvider || ""}', ${selectedSpecialist ? selectedSpecialist.id : "NULL"}, 'Pending')`;
     await db.executeQuery({ sqlQuery: insertQuery });
     const idResult = await db.executeQuery({ sqlQuery: "SELECT last_insert_rowid() as id" });
     const idRows = getRows(idResult);
@@ -2079,11 +2078,9 @@ app.get("/referrals", async (c) => {
       id: `ref-${row.id}`,
       patientFirstName: row.patient_name ? row.patient_name.split(" ")[0] : "Unknown",
       patientLastName: row.patient_name ? row.patient_name.split(" ").slice(1).join(" ") : "",
-      // Pull phone number from row if available (column name: patient_phone) and expose explicitly
       patientPhoneNumber: row.patient_phone || null,
-      patientEmail: "unknown@example.com",
+      patientEmail: row.patient_email || null,
       specialty: "Unknown",
-      // Placeholder until we join
       payer: row.insurance_provider || "Unknown",
       status: row.status || "Pending",
       appointmentDate: null,
@@ -2150,14 +2147,13 @@ app.get("/referral/:id", async (c) => {
           patientFirstName: row.patient_name ? row.patient_name.split(" ")[0] : "Unknown",
           patientLastName: row.patient_name ? row.patient_name.split(" ").slice(1).join(" ") : "",
           patientPhoneNumber: row.patient_phone || null,
-          patientEmail: "unknown@example.com",
+          patientEmail: row.patient_email || null,
           specialty: "Unknown",
           payer: row.insurance_provider || "Unknown",
           status: row.status || "Pending",
           appointmentDate: null,
           referralDate: row.created_at,
           noShowRisk: 0,
-          // Add other fields as needed
           reason: row.condition
         }
       });

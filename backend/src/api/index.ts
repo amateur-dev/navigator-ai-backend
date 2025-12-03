@@ -379,6 +379,8 @@ app.post('/seed', async (c) => {
       CREATE TABLE IF NOT EXISTS referrals (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           patient_name TEXT NOT NULL,
+          patient_email TEXT,
+          patient_phone TEXT,
           dob TEXT,
           condition TEXT,
           insurance_provider TEXT,
