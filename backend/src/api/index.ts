@@ -365,7 +365,16 @@ app.post('/seed', async (c) => {
       return c.json({ message: 'Referrals cleared (specialists preserved)' });
     }
 
-    // 1. Create Tables (SQLite Syntax)
+    // 1. Drop existing tables if they exist (to force migration)
+    try {
+      await db.executeQuery({ sqlQuery: 'DROP TABLE IF EXISTS slots' });
+      await db.executeQuery({ sqlQuery: 'DROP TABLE IF EXISTS referrals' });
+      await db.executeQuery({ sqlQuery: 'DROP TABLE IF EXISTS specialists' });
+    } catch (e) {
+      console.log('[INFO] No existing tables to drop:', e);
+    }
+
+    // 2. Create Tables (SQLite Syntax)
     await db.executeQuery({
       sqlQuery: `
       CREATE TABLE IF NOT EXISTS specialists (
