@@ -10,7 +10,7 @@ export const ReferralSmsNotification = ({
   message,
 }: SmsNotificationProps) => {
   return (
-    <div className="w-full flex flex-col border rounded-xl corner-smooth bg-background p-4">
+    <div className="w-full flex flex-col border rounded-xl corner-smooth bg-background p-4 h-full">
       <h4 className="text-sm flex items-center gap-2 font-semibold text-default">
         <Phone className="size-4" />
         <span>SMS Notification</span>

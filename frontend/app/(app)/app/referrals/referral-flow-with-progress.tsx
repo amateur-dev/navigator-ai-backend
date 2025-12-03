@@ -1,0 +1,377 @@
+"use client";
+
+import { type ProgressStep, useProgress } from "@/hooks/use-progress";
+import { useReferralUpload } from "@/hooks/use-referral-upload";
+import React from "react";
+import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
+import {
+  ReferralConfirmation,
+  ReferralDropzone,
+  ReferralExtractionSuccess,
+  ReferralUploadError,
+  ReferralUploadLoading,
+} from "./components";
+import { OrchestrationProgress } from "./orchestration-progress";
+import { PDFUploadProgress } from "./pdf-upload-progress";
+import type { ExtractionFormData } from "./referral-extraction-form";
+
+interface UploadedFile {
+  file: File;
+  id: string;
+}
+
+const PDF_UPLOAD_STEPS: ProgressStep[] = [
+  {
+    id: "upload-pdf",
+    label: "Uploading the PDF",
+    status: "pending",
+    delay: 1500,
+  },
+  {
+    id: "validate-pdf",
+    label: "Validating the PDF",
+    status: "pending",
+    delay: 2000,
+  },
+  {
+    id: "return-confirmation",
+    label: "Returning for user confirmation",
+    status: "pending",
+    delay: 1000,
+  },
+];
+
+const createOrchestrationSteps = (
+  specialist?: string,
+  assignedDoctor?: string,
+  insuranceStatus?: string
+): ProgressStep[] => [
+  {
+    id: "validate-form",
+    label: "Validating the form",
+    status: "pending",
+    delay: 1000,
+  },
+  {
+    id: "identify-requirement",
+    label: "Identifying the requirement",
+    status: "pending",
+    delay: 1500,
+    substeps: [
+      {
+        id: "found-requirement",
+        label: "Found requirement",
+        status: "pending",
+        delay: 1000,
+        dynamicValue: specialist || "Analyzing specialization...",
+      },
+    ],
+  },
+  {
+    id: "looking-doctors",
+    label: "Looking for doctors",
+    status: "pending",
+    delay: 2000,
+    substeps: [
+      {
+        id: "found-doctor",
+        label: "Found doctor",
+        status: "pending",
+        delay: 1500,
+        dynamicValue: assignedDoctor || "Searching database...",
+      },
+    ],
+  },
+  {
+    id: "confirm-availability",
+    label: "Confirming doctor availability",
+    status: "pending",
+    delay: 1500,
+    substeps: [
+      {
+        id: "availability-confirmed",
+        label: "Confirmed",
+        status: "pending",
+        delay: 1000,
+      },
+    ],
+  },
+  {
+    id: "insurance-provider",
+    label: "Looking for Insurance provider",
+    status: "pending",
+    delay: 2000,
+    substeps: [
+      {
+        id: "pre-authorization",
+        label: "Getting Pre Authorization",
+        status: "pending",
+        delay: 1500,
+      },
+      {
+        id: "authorized",
+        label: insuranceStatus || "Authorized",
+        status: "pending",
+        delay: 1000,
+        dynamicValue: insuranceStatus
+          ? `Status: ${insuranceStatus}`
+          : undefined,
+      },
+    ],
+  },
+  {
+    id: "confirming-appointment",
+    label: "Confirming Appointment",
+    status: "pending",
+    delay: 1500,
+  },
+  {
+    id: "confirmed",
+    label: "Confirmed",
+    status: "pending",
+    delay: 1000,
+  },
+];
+
+export const ReferralFlowWithProgress = () => {
+  const [uploadedFile, setUploadedFile] = React.useState<UploadedFile | null>(
+    null
+  );
+  const [showUploadProgress, setShowUploadProgress] = React.useState(false);
+  const [showOrchestrationProgress, setShowOrchestrationProgress] =
+    React.useState(false);
+  const [uploadProgressComplete, setUploadProgressComplete] =
+    React.useState(false);
+  const [orchestrationProgressComplete, setOrchestrationProgressComplete] =
+    React.useState(false);
+
+  const {
+    uploadMutation,
+    orchestrateMutation,
+    confirmMutation,
+    orchestrationData,
+    resetAll,
+  } = useReferralUpload();
+
+  // PDF Upload Progress
+  const uploadProgress = useProgress({
+    initialSteps: PDF_UPLOAD_STEPS,
+    onComplete: () => {
+      // Mark upload progress as complete
+      setUploadProgressComplete(true);
+      // Hide upload progress after a short delay
+      // setTimeout(() => {
+      //   setShowUploadProgress(false);
+      // }, 500);
+    },
+    onCancel: () => {
+      setShowUploadProgress(false);
+      setUploadProgressComplete(false);
+      removeFile();
+    },
+  });
+
+  // Orchestration Progress - initialized with empty steps
+  const [orchestrationSteps, setOrchestrationSteps] = React.useState<
+    ProgressStep[]
+  >(createOrchestrationSteps());
+
+  const orchestrationProgress = useProgress({
+    initialSteps: orchestrationSteps,
+    onComplete: () => {
+      // Mark orchestration progress as complete
+      setOrchestrationProgressComplete(true);
+      // Hide orchestration progress after a short delay
+      // setTimeout(() => {
+      //   setShowOrchestrationProgress(false);
+      // }, 500);
+    },
+    onCancel: () => {
+      setShowOrchestrationProgress(false);
+      setOrchestrationProgressComplete(false);
+    },
+  });
+
+  // Handle file upload
+  const handleFileUpload = React.useCallback(
+    async (file: File) => {
+      const newFile: UploadedFile = {
+        file,
+        id: `${file.name}-${Date.now()}-${Math.random()}`,
+      };
+
+      setUploadedFile(newFile);
+      setShowUploadProgress(true);
+      uploadProgress.reset();
+
+      // Start the progress animation
+      uploadProgress.start();
+
+      // Trigger the actual upload
+      try {
+        await uploadMutation.mutateAsync(file);
+      } catch (error) {
+        setShowUploadProgress(false);
+        uploadProgress.reset();
+        toast.error(error instanceof Error ? error.message : "Upload failed");
+      }
+    },
+    [uploadMutation, uploadProgress]
+  );
+
+  const onDrop = React.useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length === 0) return;
+      handleFileUpload(acceptedFiles[0]);
+    },
+    [handleFileUpload]
+  );
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/pdf": [".pdf"],
+    },
+    maxSize: 10 * 1024 * 1024, // 10MB
+    multiple: false,
+  });
+
+  const removeFile = React.useCallback(() => {
+    setUploadedFile(null);
+    setShowUploadProgress(false);
+    setShowOrchestrationProgress(false);
+    setUploadProgressComplete(false);
+    setOrchestrationProgressComplete(false);
+    setOrchestrationSteps(createOrchestrationSteps());
+    uploadProgress.reset();
+    orchestrationProgress.reset();
+    resetAll();
+  }, [resetAll, uploadProgress, orchestrationProgress]);
+
+  const retryUpload = React.useCallback(() => {
+    if (!uploadedFile) return;
+    handleFileUpload(uploadedFile.file);
+  }, [uploadedFile, handleFileUpload]);
+
+  const handleFormSubmit = React.useCallback(
+    async (data: ExtractionFormData) => {
+      setShowOrchestrationProgress(true);
+
+      // Update steps with initial values (will be updated with real data)
+      const initialSteps = createOrchestrationSteps();
+      setOrchestrationSteps(initialSteps);
+
+      // Start the progress animation immediately with placeholders
+      setTimeout(() => {
+        orchestrationProgress.start();
+      }, 100);
+
+      // Trigger the actual orchestration to get real data
+      try {
+        const result = await orchestrateMutation.mutateAsync(data);
+
+        // Update steps with real data from API as they come in
+        if (result.data) {
+          const updatedSteps = createOrchestrationSteps(
+            result.data.specialist,
+            result.data.assignedDoctor,
+            result.data.insuranceStatus
+          );
+          setOrchestrationSteps(updatedSteps);
+        }
+      } catch (error) {
+        setShowOrchestrationProgress(false);
+        orchestrationProgress.reset();
+        toast.error(
+          error instanceof Error ? error.message : "Orchestration failed"
+        );
+      }
+    },
+    [orchestrateMutation, orchestrationProgress]
+  );
+
+  const isUploading = uploadMutation.isPending;
+  const isExtractionSuccess = uploadMutation.isSuccess;
+  const isOrchestrating =
+    orchestrateMutation.isPending || confirmMutation.isPending;
+  const isComplete = confirmMutation.isSuccess;
+  const showDropzone = !uploadedFile || uploadMutation.isError;
+
+  return (
+    <div className="flex flex-1 overflow-hidden">
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col overflow-auto px-4">
+        {showDropzone && (
+          <ReferralDropzone
+            getRootProps={getRootProps}
+            getInputProps={getInputProps}
+            isDragActive={isDragActive}
+          />
+        )}
+
+        {showUploadProgress &&
+          !uploadProgressComplete &&
+          uploadedFile &&
+          showUploadProgress && (
+            <ReferralUploadLoading fileName={uploadedFile.file.name} />
+          )}
+
+        {isExtractionSuccess &&
+          uploadedFile &&
+          uploadMutation.data &&
+          !isComplete &&
+          uploadProgressComplete && (
+            <ReferralExtractionSuccess
+              fileName={uploadedFile.file.name}
+              extractedData={uploadMutation.data?.data || {}}
+              onSubmit={handleFormSubmit}
+              onRemove={removeFile}
+              isSubmitting={isOrchestrating}
+            />
+          )}
+
+        {isComplete &&
+          confirmMutation.data &&
+          orchestrationProgressComplete && (
+            <ReferralConfirmation
+              appointmentDetails={confirmMutation.data?.appointmentDetails}
+              notifications={confirmMutation.data?.notifications}
+              onNewReferral={removeFile}
+            />
+          )}
+
+        {uploadMutation.isError && uploadedFile && (
+          <ReferralUploadError
+            fileName={uploadedFile.file.name}
+            errorMessage={uploadMutation.error?.message || "Upload failed"}
+            onRetry={retryUpload}
+            onRemove={removeFile}
+            isUploading={isUploading}
+          />
+        )}
+      </div>
+
+      {/* Progress Sidebars */}
+      {showUploadProgress && !showOrchestrationProgress && (
+        <div className="w-96 h-full overflow-hidden">
+          <PDFUploadProgress
+            steps={uploadProgress.steps}
+            isRunning={uploadProgress.isRunning}
+            onCancel={uploadProgress.cancel}
+          />
+        </div>
+      )}
+
+      {showOrchestrationProgress && (
+        <div className="w-96 h-full overflow-hidden">
+          <OrchestrationProgress
+            steps={orchestrationProgress.steps}
+            isRunning={orchestrationProgress.isRunning}
+            onCancel={orchestrationProgress.cancel}
+          />
+        </div>
+      )}
+    </div>
+  );
+};

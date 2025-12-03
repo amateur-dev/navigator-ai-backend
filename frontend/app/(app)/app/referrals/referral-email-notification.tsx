@@ -12,7 +12,7 @@ export const ReferralEmailNotification = ({
   body,
 }: EmailNotificationProps) => {
   return (
-    <div className="border rounded-xl corner-smooth bg-background p-4 w-full">
+    <div className="border rounded-xl corner-smooth bg-background p-6 w-full">
       <h4 className="text-sm flex items-center gap-2 font-semibold text-default">
         <Mail className="size-4" />
         <span>Email Notification</span>
@@ -21,7 +21,7 @@ export const ReferralEmailNotification = ({
       <p className="text-sm font-medium text-default mb-2">
         Subject: {subject}
       </p>
-      <div className="text-sm text-default bg-muted p-5 corner-smooth border border-border rounded-xl max-h-[200px] overflow-auto whitespace-pre-wrap">
+      <div className="text-sm text-default bg-muted p-5 corner-smooth border border-border rounded-xl max-h-[400px] overflow-auto whitespace-pre-wrap">
         {body}
       </div>
     </div>

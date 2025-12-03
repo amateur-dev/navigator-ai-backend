@@ -100,7 +100,7 @@ export const ReferralExtractionForm = ({
   return (
     <form
       onSubmit={handleSubmit(handleFormSubmit, handleFormError)}
-      className="flex flex-col gap-6 border rounded-xl corner-smooth bg-background p-6"
+      className="flex flex-col gap-6 border rounded-xl corner-smooth bg-background p-6 h-full flex-1"
     >
       <div className="flex flex-col">
         <h3 className="text-base font-medium text-default">

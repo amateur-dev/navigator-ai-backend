@@ -11,7 +11,7 @@ import {
 } from "@/components/ui";
 import { Plus } from "lucide-react";
 import { useQueryState } from "nuqs";
-import { ReferralFileUpload } from "./referral-file-upload";
+import { ReferralFlowWithProgress } from "./referral-flow-with-progress";
 
 export const ReferralCreateNew = () => {
   const [action, setAction] = useQueryState("action");
@@ -38,7 +38,7 @@ export const ReferralCreateNew = () => {
             Upload patient's referral document to get started
           </DrawerDescription>
         </DrawerHeader>
-        <ReferralFileUpload />
+        <ReferralFlowWithProgress />
       </DrawerContent>
     </Drawer>
   );
