@@ -1,18 +1,15 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui";
-import { CheckCircle2, X } from "lucide-react";
-import {
-  type ExtractionFormData,
-  ReferralExtractionForm,
-} from "../referral-extraction-form";
+import { CheckCircle2, X } from 'lucide-react'
+import { Button } from '@/components/ui'
+import { type ExtractionFormData, ReferralExtractionForm } from '../referral-extraction-form'
 
 interface ReferralExtractionSuccessProps {
-  fileName: string;
-  extractedData: Record<string, unknown>;
-  onSubmit: (data: ExtractionFormData) => void;
-  onRemove: () => void;
-  isSubmitting: boolean;
+  fileName: string
+  extractedData: Record<string, unknown>
+  onSubmit: (data: ExtractionFormData) => void
+  onRemove: () => void
+  isSubmitting: boolean
 }
 
 export const ReferralExtractionSuccess = ({
@@ -20,7 +17,7 @@ export const ReferralExtractionSuccess = ({
   extractedData,
   onSubmit,
   onRemove,
-  isSubmitting,
+  isSubmitting
 }: ReferralExtractionSuccessProps) => {
   return (
     <div className="flex flex-col gap-4 w-full h-full flex-1">
@@ -48,6 +45,5 @@ export const ReferralExtractionSuccess = ({
         isSubmitting={isSubmitting}
       />
     </div>
-  );
-};
-
+  )
+}

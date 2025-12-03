@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
-import { Button } from "@/components/ui";
-import { XCircle } from "lucide-react";
+import { XCircle } from 'lucide-react'
+import { Button } from '@/components/ui'
 
 interface ReferralUploadErrorProps {
-  fileName: string;
-  errorMessage: string;
-  onRetry: () => void;
-  onRemove: () => void;
-  isUploading: boolean;
+  fileName: string
+  errorMessage: string
+  onRetry: () => void
+  onRemove: () => void
+  isUploading: boolean
 }
 
 export const ReferralUploadError = ({
@@ -16,7 +16,7 @@ export const ReferralUploadError = ({
   errorMessage,
   onRetry,
   onRemove,
-  isUploading,
+  isUploading
 }: ReferralUploadErrorProps) => {
   return (
     <div className="border rounded-xl corner-smooth bg-background p-4 flex items-center gap-4 justify-between">
@@ -48,6 +48,5 @@ export const ReferralUploadError = ({
         </Button>
       </div>
     </div>
-  );
-};
-
+  )
+}

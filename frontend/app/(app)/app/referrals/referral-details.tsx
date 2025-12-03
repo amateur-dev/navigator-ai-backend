@@ -1,9 +1,9 @@
 'use client'
 
+import * as React from 'react'
 import { Avatar, AvatarFallback, Badge, Separator } from '@/components/ui'
 import type { ReferralDetails as ReferralDetailsType } from '@/types/api'
 import { formatDate, getInitials } from '@/utils'
-import * as React from 'react'
 import { getStatusColor, getStepIcon, getUrgencyColor } from './referral-badges'
 import { ReferralLogs } from './referral-logs'
 

@@ -1,70 +1,63 @@
-"use client";
+'use client'
 
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import type { ProgressStep, StepStatus } from "@/hooks/use-progress";
-import { cn } from "@/utils/cn";
-import {
-  CheckCircle2,
-  Circle,
-  Loader2,
-  Upload,
-  XCircle,
-} from "lucide-react";
-import React from "react";
+import { CheckCircle2, Circle, Loader2, Upload, XCircle } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import type { ProgressStep, StepStatus } from '@/hooks/use-progress'
+import { cn } from '@/utils/cn'
 
 interface PDFUploadProgressProps {
-  steps: ProgressStep[];
-  isRunning: boolean;
-  onCancel: () => void;
-  className?: string;
+  steps: ProgressStep[]
+  isRunning: boolean
+  onCancel: () => void
+  className?: string
 }
 
 const getStatusIcon = (status: StepStatus) => {
   switch (status) {
-    case "running":
-      return <Loader2 className="size-4 animate-spin" />;
-    case "completed":
-      return <CheckCircle2 className="size-4" />;
-    case "failed":
-      return <XCircle className="size-4 text-red-600" />;
+    case 'running':
+      return <Loader2 className="size-4 animate-spin" />
+    case 'completed':
+      return <CheckCircle2 className="size-4" />
+    case 'failed':
+      return <XCircle className="size-4 text-red-600" />
     default:
-      return <Circle className="size-4 text-muted-foreground" />;
+      return <Circle className="size-4 text-muted-foreground" />
   }
-};
+}
 
 const getStatusBadge = (status: StepStatus) => {
   switch (status) {
-    case "running":
+    case 'running':
       return (
         <Badge variant="default" className="text-xs">
           <Loader2 className="size-3 animate-spin" />
           Processing
         </Badge>
-      );
-    case "completed":
+      )
+    case 'completed':
       return (
         <Badge variant="outline" className="text-xs">
           <CheckCircle2 className="size-3" />
           Success
         </Badge>
-      );
-    case "failed":
+      )
+    case 'failed':
       return (
         <Badge variant="destructive" className="text-xs">
           <XCircle className="size-3" />
           Failed
         </Badge>
-      );
+      )
     default:
       return (
         <Badge variant="secondary" className="text-xs">
           <Circle className="size-3" />
           Pending
         </Badge>
-      );
+      )
   }
-};
+}
 
 const ProgressStepItem = ({ step }: { step: ProgressStep }) => {
   return (
@@ -74,12 +67,12 @@ const ProgressStepItem = ({ step }: { step: ProgressStep }) => {
         <div className="flex-1 flex items-center justify-between gap-2">
           <span
             className={cn(
-              "text-sm",
-              step.status === "completed"
-                ? "text-foreground"
-                : step.status === "running"
-                  ? "text-foreground font-medium"
-                  : "text-muted-foreground"
+              'text-sm',
+              step.status === 'completed'
+                ? 'text-foreground'
+                : step.status === 'running'
+                  ? 'text-foreground font-medium'
+                  : 'text-muted-foreground'
             )}
           >
             {step.label}
@@ -96,12 +89,12 @@ const ProgressStepItem = ({ step }: { step: ProgressStep }) => {
               <div className="flex-1 flex items-center justify-between gap-2">
                 <span
                   className={cn(
-                    "text-sm",
-                    substep.status === "completed"
-                      ? "text-foreground"
-                      : substep.status === "running"
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground"
+                    'text-sm',
+                    substep.status === 'completed'
+                      ? 'text-foreground'
+                      : substep.status === 'running'
+                        ? 'text-foreground font-medium'
+                        : 'text-muted-foreground'
                   )}
                 >
                   {substep.label}
@@ -113,19 +106,19 @@ const ProgressStepItem = ({ step }: { step: ProgressStep }) => {
         </div>
       )}
     </div>
-  );
-};
+  )
+}
 
 export const PDFUploadProgress = ({
   steps,
   isRunning,
   onCancel,
-  className,
+  className
 }: PDFUploadProgressProps) => {
   return (
     <div
       className={cn(
-        "flex flex-col h-full border border-border rounded-xl corner-smooth bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
+        'flex flex-col h-full border border-border rounded-xl corner-smooth bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60',
         className
       )}
     >
@@ -135,11 +128,9 @@ export const PDFUploadProgress = ({
             <Upload className="size-4" />
           </div>
           <div>
-            <h3 className="text-base font-semibold text-foreground">
-              Processing PDF
-            </h3>
+            <h3 className="text-base font-semibold text-foreground">Processing PDF</h3>
             <p className="text-sm text-muted-foreground leading-[1]">
-              {isRunning ? "Please wait..." : "Ready"}
+              {isRunning ? 'Please wait...' : 'Ready'}
             </p>
           </div>
         </div>
@@ -153,17 +144,11 @@ export const PDFUploadProgress = ({
 
       {isRunning && (
         <div className="p-4 border-t bg-muted/50">
-          <Button
-            variant="outline"
-            className="w-full"
-            onClick={onCancel}
-            type="button"
-          >
+          <Button variant="outline" className="w-full" onClick={onCancel} type="button">
             Cancel
           </Button>
         </div>
       )}
     </div>
-  );
-};
-
+  )
+}

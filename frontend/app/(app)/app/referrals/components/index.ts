@@ -1,6 +1,5 @@
-export { ReferralConfirmation } from "./referral-confirmation";
-export { ReferralDropzone } from "./referral-dropzone";
-export { ReferralExtractionSuccess } from "./referral-extraction-success";
-export { ReferralUploadError } from "./referral-upload-error";
-export { ReferralUploadLoading } from "./referral-upload-loading";
-
+export { ReferralConfirmation } from './referral-confirmation'
+export { ReferralDropzone } from './referral-dropzone'
+export { ReferralExtractionSuccess } from './referral-extraction-success'
+export { ReferralUploadError } from './referral-upload-error'
+export { ReferralUploadLoading } from './referral-upload-loading'

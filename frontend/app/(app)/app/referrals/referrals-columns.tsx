@@ -20,14 +20,14 @@ import { getInitials } from '@/utils/get-initials'
 // Helper function to get status badge variant
 function getStatusVariant(
   status: Referral['status']
-): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' {
+): 'default' | 'secondary' | 'destructive' | 'outline' | 'success' | 'warning' {
   switch (status) {
     case 'Completed':
       return 'success'
     case 'Scheduled':
       return 'secondary'
     case 'Pending':
-      return 'outline'
+      return 'warning'
     case 'Cancelled':
       return 'destructive'
     default:
@@ -124,7 +124,12 @@ export const referralsColumns: ColumnDef<Referral>[] = [
     minSize: 160,
     maxSize: 200,
     cell: ({ row }) => {
+      if (!row.original.appointmentDate) {
+        return <Badge variant="warning">Not Scheduled</Badge>
+      }
+
       const date = new Date(row.getValue('appointmentDate'))
+
       return (
         <div className="text-sm px-3">
           <div className="font-medium">

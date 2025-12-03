@@ -1,4 +1,3 @@
-import { ReferralCreateNew } from './referral-create-new'
 import { ReferralFilters } from './referral-filters'
 import { referralsColumns } from './referrals-columns'
 import { ReferralsSearch } from './referrals-search'
@@ -16,7 +15,6 @@ export default function Page() {
           <div className="flex items-center gap-2">
             <ReferralsSearch />
             <ReferralFilters />
-            <ReferralCreateNew />
           </div>
         </div>
       </div>
