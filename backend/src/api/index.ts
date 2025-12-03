@@ -705,6 +705,39 @@ app.get('/referral/:id', async (c) => {
 
     if (rows.length > 0) {
       const row = rows[0];
+      
+      // Get specialty from specialists table
+      let specialty = 'Unknown';
+      if (row.specialist_id) {
+        const specRes = await db.executeQuery({
+          sqlQuery: `SELECT specialty FROM specialists WHERE id = ${row.specialist_id}`
+        });
+        const specRow = getRows(specRes)[0];
+        if (specRow?.specialty) { specialty = specRow.specialty; }
+      }
+      
+      // Determine workflow steps based on status
+      const getStepStatus = (stepIndex: number, currentStatus: string) => {
+        const statusMap: Record<string, number> = {
+          'Pending': 1,
+          'Scheduled': 3,
+          'Completed': 5
+        };
+        const completionLevel = statusMap[currentStatus] || 0;
+        if (stepIndex < completionLevel) return 'completed';
+        if (stepIndex === completionLevel) return 'current';
+        return 'upcoming';
+      };
+      
+      const currentStatus = row.status || 'Pending';
+      const steps = [
+        { id: 'step-1', label: 'Intake', status: getStepStatus(1, currentStatus), description: 'Initial referral received' },
+        { id: 'step-2', label: 'Eligibility', status: getStepStatus(2, currentStatus), description: 'Insurance verification' },
+        { id: 'step-3', label: 'Prior Authorization', status: getStepStatus(3, currentStatus), description: 'PA approval' },
+        { id: 'step-4', label: 'Scheduled', status: getStepStatus(4, currentStatus), description: 'Appointment scheduled' },
+        { id: 'step-5', label: 'Completed', status: getStepStatus(5, currentStatus), description: 'Appointment attended' }
+      ];
+      
       return c.json({
         success: true,
         data: {
@@ -713,13 +746,14 @@ app.get('/referral/:id', async (c) => {
           patientLastName: row.patient_name ? row.patient_name.split(' ').slice(1).join(' ') : '',
           patientPhoneNumber: row.patient_phone || null,
           patientEmail: row.patient_email || null,
-          specialty: 'Unknown',
+          specialty: specialty,
           payer: row.insurance_provider || 'Unknown',
           status: row.status || 'Pending',
           appointmentDate: null,
           referralDate: row.created_at,
           noShowRisk: 0,
-          reason: row.condition
+          reason: row.condition,
+          steps: steps
         }
       });
     }
