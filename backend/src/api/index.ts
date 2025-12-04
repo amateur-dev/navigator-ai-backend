@@ -382,9 +382,25 @@ app.post('/orchestrate', async (c) => {
       referralData = body;
     }
 
+    // Handle both old format (patientName) and new format (patientFirstName, patientLastName)
+    let patientFirstName: string;
+    let patientLastName: string;
+    
+    if (referralData.patientFirstName && referralData.patientLastName) {
+      // New format
+      patientFirstName = referralData.patientFirstName;
+      patientLastName = referralData.patientLastName;
+    } else if (referralData.patientName) {
+      // Old format - split patientName
+      const nameParts = referralData.patientName.trim().split(' ');
+      patientFirstName = nameParts[0] || 'Unknown';
+      patientLastName = nameParts.slice(1).join(' ') || 'Unknown';
+    } else {
+      patientFirstName = 'Unknown';
+      patientLastName = 'Unknown';
+    }
+
     const {
-      patientFirstName,
-      patientLastName,
       patientEmail,
       patientPhoneNumber,
       age,
@@ -400,7 +416,7 @@ app.post('/orchestrate', async (c) => {
     } = referralData;
 
     // Validate required fields
-    if (!patientFirstName || !patientLastName) {
+    if (!patientFirstName || !patientLastName || patientFirstName === 'Unknown' || patientLastName === 'Unknown') {
       return c.json({
         success: false,
         error: {
