@@ -192,15 +192,10 @@ export const useReferralUpload = () => {
     },
     onSuccess: (data, patientData) => {
       toast.success(
-        `Matched with ${data.data?.assignedDoctor || "specialist"}`
+        `Referral successfully created and confirmed with ${data.data?.assignedDoctor || "specialist"}`
       );
       setOrchestrationData(data);
-
-      // Automatically trigger confirmation
-      confirmMutation.mutate({
-        orchestrationData: data,
-        patientData,
-      });
+      // Orchestration already handles confirmation - no need for separate confirm step
     },
     onError: (error: Error) => {
       toast.error(`Orchestration failed: ${error.message}`);
@@ -211,13 +206,11 @@ export const useReferralUpload = () => {
     setOrchestrationData(null);
     uploadMutation.reset();
     orchestrateMutation.reset();
-    confirmMutation.reset();
-  }, [uploadMutation, orchestrateMutation, confirmMutation]);
+  }, [uploadMutation, orchestrateMutation]);
 
   return {
     uploadMutation,
     orchestrateMutation,
-    confirmMutation,
     orchestrationData,
     resetAll,
   };

@@ -27,7 +27,6 @@ export const ReferralFileUpload = () => {
   const {
     uploadMutation,
     orchestrateMutation,
-    confirmMutation,
     orchestrationData,
     resetAll,
   } = useReferralUpload();
@@ -88,9 +87,8 @@ export const ReferralFileUpload = () => {
 
   const isUploading = uploadMutation.isPending;
   const isExtractionSuccess = uploadMutation.isSuccess;
-  const isOrchestrating =
-    orchestrateMutation.isPending || confirmMutation.isPending;
-  const isComplete = confirmMutation.isSuccess;
+  const isOrchestrating = orchestrateMutation.isPending;
+  const isComplete = orchestrateMutation.isSuccess;
   const showDropzone = !uploadedFile || uploadMutation.isError;
 
   return (
@@ -176,14 +174,14 @@ export const ReferralFileUpload = () => {
         </div>
       )}
 
-      {isComplete && confirmMutation.data && (
+      {isComplete && orchestrationData && (
         <div className="flex flex-col gap-4 pb-6 w-full">
           <Alert className="bg-green-50 border-green-200">
             <CheckCircle2 className="text-green-500" />
             <div className="flex items-start justify-between gap-3 col-start-2">
               <div className="flex-1">
                 <AlertTitle className="text-green-900">
-                  Appointment Confirmed!
+                  Referral Successfully Created!
                 </AlertTitle>
                 <AlertDescription className="text-green-700">
                   Confirmation sent successfully
@@ -202,7 +200,7 @@ export const ReferralFileUpload = () => {
           </Alert>
 
           <div className="flex flex-col gap-4 w-full">
-            {confirmMutation.data?.appointmentDetails && (
+            {orchestrationData.data?.appointmentDetails && (
               <div className="border rounded-xl corner-smooth bg-background p-6">
                 <h3 className="text-base font-semibold text-default mb-4">
                   Appointment Details
@@ -213,7 +211,7 @@ export const ReferralFileUpload = () => {
                       Patient
                     </span>
                     <span className="text-sm font-medium text-default">
-                      {confirmMutation.data.appointmentDetails.patient}
+                      {orchestrationData.data.appointmentDetails.patient}
                     </span>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2">
@@ -221,7 +219,7 @@ export const ReferralFileUpload = () => {
                       Doctor
                     </span>
                     <span className="text-sm font-medium text-default">
-                      {confirmMutation.data.appointmentDetails.doctor}
+                      {orchestrationData.data.appointmentDetails.doctor}
                     </span>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2">
@@ -229,7 +227,7 @@ export const ReferralFileUpload = () => {
                       Specialty
                     </span>
                     <span className="text-sm font-medium text-default">
-                      {confirmMutation.data.appointmentDetails.specialty}
+                      {orchestrationData.data.appointmentDetails.specialty}
                     </span>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2">
@@ -237,7 +235,7 @@ export const ReferralFileUpload = () => {
                       Date & Time
                     </span>
                     <span className="text-sm font-medium text-default">
-                      {confirmMutation.data.appointmentDetails.dateTime}
+                      {orchestrationData.data.appointmentDetails.dateTime}
                     </span>
                   </div>
                   <div className="grid grid-cols-[120px_1fr] gap-2">
@@ -245,27 +243,27 @@ export const ReferralFileUpload = () => {
                       Location
                     </span>
                     <span className="text-sm font-medium text-default">
-                      {confirmMutation.data.appointmentDetails.location}
+                      {orchestrationData.data.appointmentDetails.location}
                     </span>
                   </div>
                 </div>
               </div>
             )}
 
-            {confirmMutation.data?.notifications && (
+            {orchestrationData.data?.notifications && (
               <div className="flex flex-col gap-4 lg:flex-row">
-                {confirmMutation.data.notifications.sms && (
+                {orchestrationData.data.notifications.sms && (
                   <ReferralSmsNotification
-                    to={confirmMutation.data.notifications.sms.to}
-                    message={confirmMutation.data.notifications.sms.message}
+                    to={orchestrationData.data.notifications.sms.to}
+                    message={orchestrationData.data.notifications.sms.message}
                   />
                 )}
 
-                {confirmMutation.data.notifications.email && (
+                {orchestrationData.data.notifications.email && (
                   <ReferralEmailNotification
-                    to={confirmMutation.data.notifications.email.to}
-                    subject={confirmMutation.data.notifications.email.subject}
-                    body={confirmMutation.data.notifications.email.body}
+                    to={orchestrationData.data.notifications.email.to}
+                    subject={orchestrationData.data.notifications.email.subject}
+                    body={orchestrationData.data.notifications.email.body}
                   />
                 )}
               </div>
