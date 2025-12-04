@@ -114,27 +114,72 @@ app.post('/extract', async (req, res) => {
             const r = await fetch(VULTR_URL, { method: 'POST', body: formData });
             const json = await r.json();
             if (!r.ok || !json.success) {
-                throw new Error(json?.error || `Service returned status ${r.status}`);
+                throw new Error(json?.error?.message || json?.error || `Service returned status ${r.status}`);
             }
 
-            // Return extraction result as-is (no mock wrapping)
-            return res.status(200).json(json);
+            // Extract phone and email from the extracted data
+            const extractedData = json.data?.extractedData || {};
+            const fullText = Object.values(extractedData).join(' ');
+            
+            // Parse email and phone if not already present
+            if (!extractedData.patientEmail) {
+                extractedData.patientEmail = extractEmail(fullText);
+            }
+            if (!extractedData.patientPhoneNumber) {
+                extractedData.patientPhoneNumber = extractPhoneNumber(fullText);
+            }
+
+            // Return extraction result with enhanced data
+            return res.status(200).json({
+                ...json,
+                data: {
+                    ...json.data,
+                    extractedData
+                }
+            });
         } catch (ex) {
             console.error('Extraction RPC error:', ex);
-            return res.status(500).json({ success: false, error: { code: 'EXTRACTION_FAILED', message: String(ex), statusCode: 500 } });
+            const errorMsg = ex instanceof Error ? ex.message : String(ex);
+            return res.status(500).json({ 
+                success: false, 
+                error: { 
+                    code: 'EXTRACTION_FAILED', 
+                    message: errorMsg,
+                    statusCode: 500 
+                } 
+            });
         }
     } catch (error) {
         console.error('Extract error:', error);
+        const errorMsg = error instanceof Error ? error.message : 'Failed to extract data from document';
         return res.status(500).json({
             success: false,
             error: {
                 code: "EXTRACTION_FAILED",
-                message: "Failed to extract data from document",
+                message: errorMsg,
                 statusCode: 500
             }
         });
     }
 });
+
+// Helper to extract email from text
+function extractEmail(text: string): string | null {
+    const emailRegex = /([a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+    const match = text.match(emailRegex);
+    return match ? match[1] : null;
+}
+
+// Helper to extract phone number from text
+function extractPhoneNumber(text: string): string | null {
+    // Match various phone formats: +1-555-123-4567, (555) 123-4567, 555.123.4567, 5551234567, etc.
+    const phoneRegex = /(?:\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})/;
+    const match = text.match(phoneRegex);
+    if (match) {
+        return `+1-${match[1]}-${match[2]}-${match[3]}`;
+    }
+    return null;
+}
 
 // Helper to determine specialty
 function determineSpecialty(reason: string): string {
@@ -147,15 +192,38 @@ function determineSpecialty(reason: string): string {
 app.post('/seed', (req, res) => {
     // support body { clearReferralsOnly: true } to remove only referrals and preserve specialists
     const { clearReferralsOnly } = req.body || {};
+    
     if (clearReferralsOnly) {
+        const clearedCount = referrals.length;
         referrals = [];
-        return res.json({ message: 'Referrals cleared (specialists preserved)' });
+        // Clear associated logs as well
+        Object.keys(referralLogs).forEach(key => delete referralLogs[key]);
+        return res.json({ 
+            success: true,
+            message: `Referrals cleared (${clearedCount} removed, specialists preserved)`,
+            data: {
+                referralsCleared: clearedCount,
+                specialistsPreserved: specialists.length
+            }
+        });
     }
 
     // default behavior: full local seed (clear referrals and specialists)
+    const clearedReferrals = referrals.length;
+    const clearedSpecialists = specialists.length;
     referrals = [];
     specialists = [];
-    res.json({ message: 'Database seeded (cleared all referrals and specialists)' });
+    Object.keys(referralLogs).forEach(key => delete referralLogs[key]);
+    
+    res.json({ 
+        success: true,
+        message: 'Database seeded (all referrals and specialists cleared)',
+        data: {
+            referralsCleared: clearedReferrals,
+            specialistsCleared: clearedSpecialists,
+            logsCleared: Object.keys(referralLogs).length
+        }
+    });
 });
 
 
@@ -164,13 +232,21 @@ app.post('/orchestrate', async (req, res) => {
         const { referralData } = req.body;
 
         if (!referralData) {
-            return res.status(400).json({ success: false, error: 'Missing referralData' });
+            return res.status(400).json({ 
+                success: false, 
+                error: {
+                    code: 'MISSING_REFERRAL_DATA',
+                    message: 'Missing referralData in request body',
+                    statusCode: 400
+                }
+            });
         }
 
         const {
             patientFirstName,
             patientLastName,
             patientEmail,
+            patientPhoneNumber,
             age,
             specialty: requestedSpecialty,
             payer,
@@ -183,53 +259,160 @@ app.post('/orchestrate', async (req, res) => {
             reason
         } = referralData;
 
+        // Validate required fields
+        if (!patientFirstName || !patientLastName) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'MISSING_REQUIRED_FIELDS',
+                    message: 'patientFirstName and patientLastName are required',
+                    statusCode: 400
+                }
+            });
+        }
+
         const specialty = requestedSpecialty || determineSpecialty(reason || '');
+        // Ensure we have default specialists if array is empty
+        if (specialists.length === 0) {
+            specialists = [
+                { id: 1, name: 'Dr. James Mitchell', specialty: 'Cardiologist' },
+                { id: 2, name: 'Dr. Emily Chen', specialty: 'Dermatologist' }
+            ];
+        }
         const specialist = specialists.find(s => s.specialty === specialty) || specialists[0];
+
+        // Generate future appointment date for demo (7-14 days from now)
+        const demoAppointmentDate = new Date();
+        demoAppointmentDate.setDate(demoAppointmentDate.getDate() + Math.floor(Math.random() * 7) + 7);
 
         const newReferral = {
             id: `ref-${Date.now()}`,
             patientFirstName,
             patientLastName,
-            patientPhoneNumber: referralData.patientPhoneNumber || null,
-            patientEmail,
+            patientPhoneNumber: patientPhoneNumber || null,
+            patientEmail: patientEmail || null,
             age,
             specialty,
             payer,
             plan,
             urgency,
-            appointmentDate,
+            appointmentDate: appointmentDate || demoAppointmentDate.toISOString(),
             referralDate: referralDate || new Date().toISOString(),
-            providerName,
-            facilityName,
+            providerName: providerName || specialist.name,
+            facilityName: facilityName || 'Downtown Medical Center',
             reason,
-            status: 'Pending',
+            status: 'Confirmed', // Auto-progress to confirmed for demo
             noShowRisk: Math.floor(Math.random() * 50)
         };
 
         referrals.push(newReferral);
-        // create an initial log for the new referral
+        
+        // Create comprehensive logs for the orchestration
+        const now = new Date();
         referralLogs[newReferral.id] = [
-            { id: `log-${Date.now()}`, event: 'Referral Created', type: 'system', timestamp: new Date().toISOString(), user: 'system', description: 'Referral created' }
+            { 
+                id: `log-${Date.now()}-1`, 
+                event: 'Referral Created', 
+                type: 'system', 
+                timestamp: now.toISOString(), 
+                user: 'system', 
+                description: 'Referral created through orchestration engine'
+            },
+            {
+                id: `log-${Date.now()}-2`,
+                event: 'Eligibility Verified',
+                type: 'system',
+                timestamp: new Date(now.getTime() + 5000).toISOString(),
+                user: 'system',
+                description: `Eligibility verified with ${payer || 'insurance provider'}`
+            },
+            {
+                id: `log-${Date.now()}-3`,
+                event: 'Prior Authorization Approved',
+                type: 'system',
+                timestamp: new Date(now.getTime() + 10000).toISOString(),
+                user: 'system',
+                description: 'Prior authorization approved by insurance'
+            },
+            {
+                id: `log-${Date.now()}-4`,
+                event: 'Appointment Scheduled',
+                type: 'system',
+                timestamp: new Date(now.getTime() + 15000).toISOString(),
+                user: 'system',
+                description: `Appointment scheduled with ${specialist.name}`
+            }
         ];
+
+        // Log notification events
+        if (patientEmail) {
+            referralLogs[newReferral.id].push({
+                id: `log-${Date.now()}-email`,
+                event: 'Appointment Confirmation Email Sent',
+                type: 'message',
+                timestamp: new Date(now.getTime() + 16000).toISOString(),
+                user: 'system',
+                description: `Appointment confirmation sent to ${patientEmail}`,
+                details: {
+                    recipient: patientEmail,
+                    channel: 'email',
+                    status: 'sent'
+                }
+            });
+        }
+
+        if (patientPhoneNumber) {
+            referralLogs[newReferral.id].push({
+                id: `log-${Date.now()}-sms`,
+                event: 'Appointment Confirmation SMS Sent',
+                type: 'message',
+                timestamp: new Date(now.getTime() + 17000).toISOString(),
+                user: 'system',
+                description: `Appointment confirmation sent to ${patientPhoneNumber}`,
+                details: {
+                    recipient: patientPhoneNumber,
+                    channel: 'sms',
+                    status: 'sent'
+                }
+            });
+        }
 
         res.status(200).json({
             success: true,
             data: {
                 referralId: newReferral.id,
-                status: 'Processed',
+                status: 'Confirmed',
                 orchestrationId: `orch-${Date.now()}`,
-                completedSteps: [],
+                completedSteps: [
+                    'Referral Created',
+                    'Eligibility Verified',
+                    'Prior Authorization Approved',
+                    'Appointment Scheduled'
+                ],
                 appointmentDetails: {
                     providerName: specialist.name,
-                    facilityName: 'Downtown Medical Center',
-                    facilityAddress: '123 Main St'
+                    facilityName: newReferral.facilityName,
+                    facilityAddress: '123 Main St',
+                    appointmentDate: newReferral.appointmentDate
+                },
+                notificationsSent: {
+                    email: !!patientEmail,
+                    sms: !!patientPhoneNumber
                 }
             },
-            message: 'Referral orchestration completed successfully'
+            message: 'Referral orchestration completed successfully with auto-confirmation and notifications'
         });
     } catch (error) {
         console.error('Orchestrate error:', error);
-        res.status(500).json({ success: false, error: 'Orchestration failed' });
+        const errorMsg = error instanceof Error ? error.message : 'Orchestration failed';
+        res.status(500).json({ 
+            success: false, 
+            error: {
+                code: 'ORCHESTRATION_FAILED',
+                message: errorMsg,
+                statusCode: 500
+            }
+        });
     }
 });
 

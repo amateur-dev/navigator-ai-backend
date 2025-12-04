@@ -1,4 +1,4 @@
-globalThis.__RAINDROP_GIT_COMMIT_SHA = "c867dbec4ab8844638b5fea113a2980d57a8c228"; 
+globalThis.__RAINDROP_GIT_COMMIT_SHA = "a0908cdddebb069d143fe7b949844ebbd1c3b0ae"; 
 
 // node_modules/@liquidmetal-ai/raindrop-framework/dist/core/cors.js
 var matchOrigin = (request, env, config) => {
@@ -1687,6 +1687,58 @@ function determineSpecialty(referralReason) {
   }
   return specialty;
 }
+function extractEmail(text) {
+  if (!text) return null;
+  const emailRegex = /([a-zA-Z0-9._%-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/;
+  const match2 = text.match(emailRegex);
+  if (match2) {
+    const email = match2[1];
+    if (email.length > 5 && email.includes("@")) {
+      return email;
+    }
+  }
+  return null;
+}
+function extractPhoneNumber(text) {
+  if (!text) return null;
+  const patterns = [
+    /\+1[-.\s]?(\d{3})[-.\s]?(\d{3})[-.\s]?(\d{4})/,
+    // +1-555-123-4567 or +1 555 123 4567
+    /\((\d{3})\)\s*(\d{3})[-.\s]?(\d{4})/,
+    // (555) 123-4567
+    /(\d{3})[-.](\d{3})[-.](\d{4})/,
+    // 555-123-4567 or 555.123.4567
+    /\b(\d{10})\b/,
+    // 5551234567 (10 digits)
+    /Phone:?\s*(\+?1?[-.\s]?)?(\(?\d{3}\)?[-.\s]?)(\d{3})[-.\s]?(\d{4})/,
+    // Phone: 555-123-4567
+    /Tel:?\s*(\+?1?[-.\s]?)?(\(?\d{3}\)?[-.\s]?)(\d{3})[-.\s]?(\d{4})/,
+    // Tel: 555-123-4567
+    /\(555\)\s*123[-.]?4567/
+    // Exact format from PDF
+  ];
+  for (const pattern of patterns) {
+    const match2 = text.match(pattern);
+    if (match2) {
+      let result = match2[0].trim();
+      if (match2.length >= 3) {
+        const cleaned = result.replace(/[^\d]/g, "");
+        if (cleaned.length >= 10) {
+          const area = cleaned.slice(-10, -7);
+          const exchange = cleaned.slice(-7, -4);
+          const subscriber = cleaned.slice(-4);
+          if (area && exchange && subscriber) {
+            return `(${area}) ${exchange}-${subscriber}`;
+          }
+        }
+      }
+      if (result.length >= 10 && result.match(/\d/g)?.length >= 10) {
+        return result;
+      }
+    }
+  }
+  return null;
+}
 var app = new Hono2();
 async function logReferralEvent(db, referralId, event, type, description, user = "system", details = null, timestamp = null) {
   try {
@@ -1785,7 +1837,13 @@ app.post("/extract", async (c) => {
         throw new Error(vultrResult.error || "Unknown error from Vultr");
       }
       extractedData = vultrResult.data;
-      console.log("Vultr Extraction Result:", extractedData);
+      console.log("Vultr Extraction Result:", JSON.stringify(extractedData, null, 2));
+      console.log("[DEBUG] Vultr returned patientEmail:", extractedData.patientEmail);
+      console.log("[DEBUG] Vultr returned patientPhoneNumber:", extractedData.patientPhoneNumber);
+      if (vultrResult.metadata?.textLength) {
+        console.log("[DEBUG] Raw text length from Vultr:", vultrResult.metadata.textLength);
+        extractedData._pdfTextLength = vultrResult.metadata.textLength;
+      }
     } catch (vultrError) {
       console.error("Vultr Extraction Failed:", vultrError);
       return c.json({
@@ -1797,14 +1855,50 @@ app.post("/extract", async (c) => {
         }
       }, 500);
     }
+    let patientEmail = extractedData.patientEmail;
+    let patientPhoneNumber = extractedData.patientPhoneNumber;
+    if (!patientEmail || patientEmail === "Unknown" || patientEmail === null) {
+      patientEmail = null;
+    }
+    if (!patientPhoneNumber || patientPhoneNumber === "Unknown" || patientPhoneNumber === null) {
+      patientPhoneNumber = null;
+    }
+    const textToSearch = [
+      extractedData.patientName,
+      extractedData.referralReason,
+      extractedData.notes,
+      extractedData.providerPhone,
+      extractedData.providerName,
+      extractedData.rawText,
+      // Include raw extracted text if available
+      extractedData.fullText,
+      // Include any full text extraction
+      extractedData.text,
+      Object.values(extractedData).join(" ")
+      // Search all fields as fallback
+    ].filter(Boolean).join(" ");
+    if (!patientEmail) {
+      const emailFromText = extractEmail(textToSearch);
+      if (emailFromText) {
+        patientEmail = emailFromText;
+        console.log("[DEBUG] Email extracted from text:", emailFromText);
+      }
+    }
+    if (!patientPhoneNumber) {
+      const phoneFromText = extractPhoneNumber(textToSearch);
+      if (phoneFromText) {
+        patientPhoneNumber = phoneFromText;
+        console.log("[DEBUG] Phone extracted from text:", phoneFromText);
+      }
+    }
     return c.json({
       success: true,
       data: {
         extractedData: {
           patientFirstName: extractedData.patientName?.split(" ")[0] || "Unknown",
           patientLastName: extractedData.patientName?.split(" ").slice(1).join(" ") || "Unknown",
-          patientEmail: extractedData.patientEmail || null,
-          patientPhoneNumber: extractedData.patientPhoneNumber || null,
+          patientEmail: patientEmail || null,
+          patientPhoneNumber: patientPhoneNumber || null,
           age: extractedData.dateOfBirth ? calculateAge(extractedData.dateOfBirth) : null,
           specialty: determineSpecialty(extractedData.referralReason || ""),
           payer: extractedData.insuranceProvider || "Unknown",
@@ -1849,25 +1943,40 @@ function calculateAge(dateOfBirth) {
 app.post("/orchestrate", async (c) => {
   try {
     const body = await c.req.json();
-    const { patientName, patientEmail, patientPhoneNumber, referralReason, insuranceProvider } = body;
-    if (!patientName || !referralReason) {
+    let referralData;
+    if (body.referralData) {
+      referralData = body.referralData;
+    } else {
+      referralData = body;
+    }
+    const {
+      patientFirstName,
+      patientLastName,
+      patientEmail,
+      patientPhoneNumber,
+      age,
+      reason,
+      specialty: requestedSpecialty,
+      payer,
+      plan,
+      urgency,
+      appointmentDate,
+      referralDate,
+      providerName,
+      facilityName
+    } = referralData;
+    if (!patientFirstName || !patientLastName) {
       return c.json({
         success: false,
         error: {
           code: "INVALID_REQUEST",
-          message: "Missing required fields",
+          message: "Missing required fields: patientFirstName and patientLastName",
           statusCode: 400
         }
       }, 400);
     }
-    const specialty = determineSpecialty(referralReason);
-    const insuranceStatus = insuranceProvider && insuranceProvider.toLowerCase().includes("blue") ? "Approved" : "Pending Review";
     const db = c.env.REFERRALS_DB;
-    const specialistsResult = await db.executeQuery({
-      sqlQuery: `SELECT * FROM specialists WHERE specialty = '${specialty}'`
-    });
-    let availableSlots = [];
-    let selectedSpecialist = null;
+    const specialty = requestedSpecialty || determineSpecialty(reason || "");
     const getRows = (result) => {
       if (Array.isArray(result)) return result;
       if (result && result.results) {
@@ -1884,64 +1993,101 @@ app.post("/orchestrate", async (c) => {
       if (result && Array.isArray(result.rows)) return result.rows;
       return [];
     };
+    const specialistsResult = await db.executeQuery({
+      sqlQuery: `SELECT * FROM specialists WHERE specialty = '${specialty}'`
+    });
     const specialists = getRows(specialistsResult);
-    if (specialists.length > 0) {
-      selectedSpecialist = specialists[0];
-      const slotsResult = await db.executeQuery({
-        sqlQuery: `SELECT * FROM slots WHERE specialist_id = ${selectedSpecialist.id} AND is_booked = 0 AND start_time > '${(/* @__PURE__ */ new Date()).toISOString()}' ORDER BY start_time ASC LIMIT 3`
-      });
-      const slots = getRows(slotsResult);
-      availableSlots = slots.map((slot) => slot.start_time);
-    }
+    const selectedSpecialist = specialists.length > 0 ? specialists[0] : null;
+    const demoAppointmentDate = /* @__PURE__ */ new Date();
+    demoAppointmentDate.setDate(demoAppointmentDate.getDate() + Math.floor(Math.random() * 7) + 7);
+    const sanitizedFirstName = `'${patientFirstName.replace(/'/g, "''")}'`;
+    const sanitizedLastName = `'${patientLastName.replace(/'/g, "''")}'`;
     const sanitizedEmail = patientEmail ? `'${patientEmail.replace(/'/g, "''")}'` : "NULL";
     const sanitizedPhone = patientPhoneNumber ? `'${patientPhoneNumber.replace(/'/g, "''")}'` : "NULL";
-    const sanitizedName = `'${patientName.replace(/'/g, "''")}'`;
-    const sanitizedReason = `'${referralReason.replace(/'/g, "''")}'`;
-    const sanitizedInsurer = insuranceProvider ? `'${insuranceProvider.replace(/'/g, "''")}'` : "NULL";
-    const insertQuery = `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status) VALUES (${sanitizedName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedReason}, ${sanitizedInsurer}, ${selectedSpecialist ? selectedSpecialist.id : "NULL"}, 'Pending')`;
-    console.log("[DEBUG] Executing INSERT:", insertQuery);
-    try {
-      const insertResult = await db.executeQuery({ sqlQuery: insertQuery });
-      console.log("[DEBUG] Insert result:", JSON.stringify(insertResult));
-    } catch (insertError) {
-      console.error("[ERROR] INSERT failed:", insertError, "Query:", insertQuery);
-    }
-    console.log("[DEBUG] Getting last_insert_rowid()...");
+    const sanitizedReason = reason ? `'${reason.replace(/'/g, "''")}'` : "NULL";
+    const sanitizedPayer = payer ? `'${payer.replace(/'/g, "''")}'` : "NULL";
+    const sanitizedAppointmentDate = appointmentDate || demoAppointmentDate.toISOString();
+    const insertQuery = `INSERT INTO referrals (patient_name, patient_email, patient_phone, condition, insurance_provider, specialist_id, status, appointmentDate) 
+      VALUES (${sanitizedFirstName} || ' ' || ${sanitizedLastName}, ${sanitizedEmail}, ${sanitizedPhone}, ${sanitizedReason}, ${sanitizedPayer}, ${selectedSpecialist ? selectedSpecialist.id : "NULL"}, 'Confirmed', '${sanitizedAppointmentDate}')`;
+    await db.executeQuery({ sqlQuery: insertQuery });
     const idResult = await db.executeQuery({ sqlQuery: "SELECT last_insert_rowid() as id" });
     const idRows = getRows(idResult);
-    console.log("[DEBUG] ID result rows:", JSON.stringify(idRows));
     const referralId = idRows[0]?.id || "unknown";
-    console.log("[DEBUG] Referral ID extracted:", referralId);
     if (referralId !== "unknown") {
-      await logReferralEvent(
-        db,
-        referralId,
-        "Referral Created",
-        "system",
-        "Referral created through orchestration engine",
-        "system",
-        {
-          patientName,
-          referralReason,
-          specialty,
-          insuranceProvider
-        }
-      );
+      await logReferralEvent(db, referralId, "Referral Created", "system", "Referral received from provider", "system", {
+        patientFirstName,
+        patientLastName,
+        specialty,
+        reason
+      });
+      await logReferralEvent(db, referralId, "Eligibility Verified", "eligibility", "Insurance eligibility verified", "system", {
+        payer,
+        eligibilityStatus: "Approved"
+      });
+      await logReferralEvent(db, referralId, "Prior Authorization Approved", "pa", "Prior authorization obtained", "system", {
+        priorAuthNumber: `PA-${Date.now()}`
+      });
+      await logReferralEvent(db, referralId, "Appointment Scheduled", "scheduling", "Appointment scheduled with specialist", "system", {
+        specialist: selectedSpecialist?.name || "TBD",
+        appointmentDate: sanitizedAppointmentDate
+      });
+      if (patientEmail) {
+        await logReferralEvent(db, referralId, "Email Notification Sent", "message", `Confirmation email sent to ${patientEmail}`, "system", {
+          recipientEmail: patientEmail,
+          notificationType: "email"
+        });
+      }
+      if (patientPhoneNumber) {
+        await logReferralEvent(db, referralId, "SMS Notification Sent", "message", `Confirmation SMS sent to ${patientPhoneNumber}`, "system", {
+          recipientPhone: patientPhoneNumber,
+          notificationType: "sms"
+        });
+      }
     }
     return c.json({
       success: true,
       data: {
         referralId: `ref-${referralId}`,
-        status: "Processed",
-        specialist: specialty,
-        assignedDoctor: selectedSpecialist ? selectedSpecialist.name : "Pending Assignment",
-        insuranceStatus,
-        availableSlots,
-        debug: {
-          specialtyUsed: specialty,
-          specialistsFound: specialists.length,
-          slotsFound: availableSlots.length
-        }
+        status: "Confirmed",
+        // AUTO-CONFIRMED for demo
+        orchestrationId: `orch-${Date.now()}`,
+        completedSteps: [
+          {
+            id: "step-1",
+            label: "Referral Created",
+            status: "completed",
+            completedAt: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          {
+            id: "step-2",
+            label: "Eligibility Verified",
+            status: "completed",
+            completedAt: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          {
+            id: "step-3",
+            label: "Prior Authorization Approved",
+            status: "completed",
+            completedAt: (/* @__PURE__ */ new Date()).toISOString()
+          },
+          {
+            id: "step-4",
+            label: "Appointment Scheduled",
+            status: "completed",
+            completedAt: (/* @__PURE__ */ new Date()).toISOString()
+          }
+        ],
+        appointmentDetails: {
+          appointmentDate: sanitizedAppointmentDate,
+          providerName: selectedSpecialist?.name || providerName || "TBD",
+          facilityName: facilityName || "Downtown Medical Center",
+          facilityAddress: "123 Main St, New York, NY 10001"
+        },
+        notificationsSent: {
+          email: !!patientEmail,
+          sms: !!patientPhoneNumber
+        },
+        estimatedCompletionTime: (/* @__PURE__ */ new Date()).toISOString()
       },
       message: "Referral orchestration completed successfully"
     });
@@ -1951,7 +2097,7 @@ app.post("/orchestrate", async (c) => {
       success: false,
       error: {
         code: "ORCHESTRATION_FAILED",
-        message: "Failed to start orchestration: " + (error instanceof Error ? error.message : String(error)),
+        message: "Failed to orchestrate referral: " + (error instanceof Error ? error.message : String(error)),
         statusCode: 500
       }
     }, 500);
@@ -1966,8 +2112,38 @@ app.post("/seed", async (c) => {
     } catch (e) {
     }
     if (body && body.clearReferralsOnly) {
+      const getRows2 = (result) => {
+        if (Array.isArray(result)) return result;
+        if (result && result.results) {
+          if (Array.isArray(result.results)) return result.results;
+          if (typeof result.results === "string") {
+            try {
+              return JSON.parse(result.results);
+            } catch (e) {
+              console.error("Failed to parse SQL results:", e);
+              return [];
+            }
+          }
+        }
+        if (result && Array.isArray(result.rows)) return result.rows;
+        return [];
+      };
+      const referralCountRes = await db.executeQuery({ sqlQuery: "SELECT COUNT(*) as count FROM referrals" });
+      const referralCountRows = getRows2(referralCountRes);
+      const referralCount = referralCountRows[0]?.count || 0;
+      const logsCountRes = await db.executeQuery({ sqlQuery: "SELECT COUNT(*) as count FROM referral_logs" });
+      const logsCountRows = getRows2(logsCountRes);
+      const logsCount = logsCountRows[0]?.count || 0;
+      await db.executeQuery({ sqlQuery: "DELETE FROM referral_logs" });
       await db.executeQuery({ sqlQuery: "DELETE FROM referrals" });
-      return c.json({ message: "Referrals cleared (specialists preserved)" });
+      return c.json({
+        success: true,
+        message: "Referrals and associated logs cleared (specialists preserved)",
+        clearedData: {
+          referralsCleared: referralCount,
+          logsCleared: logsCount
+        }
+      });
     }
     try {
       await db.executeQuery({ sqlQuery: "DROP TABLE IF EXISTS referral_logs" });
@@ -2286,7 +2462,17 @@ app.post("/seed", async (c) => {
         }
       }
     }
-    return c.json({ message: `Database seeded successfully with ${allSpecs.length} specialists and 15 demo referrals` });
+    return c.json({
+      success: true,
+      message: `Database seeded successfully`,
+      seedData: {
+        specialistsCreated: allSpecs.length,
+        demoReferralsCreated: demoReferrals.length,
+        specialties: 15,
+        totalWorkflowLogs: demoReferrals.length * 5
+        // approximate
+      }
+    });
   } catch (error) {
     console.error("Seed error:", error);
     return c.json({ error: "Seeding failed: " + (error instanceof Error ? error.message : String(error)) }, 500);

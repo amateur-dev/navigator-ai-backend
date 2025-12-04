@@ -73,7 +73,8 @@ Extract the following information and return it as a JSON object:
 {
   "patientName": "Full patient name (first and last)",
   "dateOfBirth": "Patient's date of birth in YYYY-MM-DD format",
-  "patientPhoneNumber": "Patient's phone number",
+  "patientPhoneNumber": "Patient's phone number in any format (e.g., 555-1234, (555) 123-4567, +1-555-123-4567)",
+  "patientEmail": "Patient's email address if present",
   "referralReason": "The medical condition, diagnosis, or symptoms mentioned",
   "insuranceProvider": "Insurance provider/payer company name",
   "specialty": "The medical specialty being referred to",
@@ -82,17 +83,17 @@ Extract the following information and return it as a JSON object:
   "plan": "The insurance plan name or policy number"
 }
 
-Instructions:
-- Extract EXACTLY what you see in the text above
-- For dates, convert any format to YYYY-MM-DD (e.g., "July 22, 1985" becomes "1985-07-22")
-- Look for keywords like "Name:", "DOB:", "Patient:", "Insurance:", "Diagnosis:", "Reason:", "Phone:"
-- If a field is not found, use "Unknown"
+CRITICAL INSTRUCTIONS:
+- For patientPhoneNumber: SEARCH CAREFULLY for any 10-digit number or phone format (###-###-####, (###) ###-####, etc)
+- For patientEmail: SEARCH for any text containing @ symbol that looks like an email
+- Look for keywords like "Name:", "DOB:", "Patient:", "Insurance:", "Diagnosis:", "Reason:", "Phone:", "Tel:", "Cell:", "Contact:", "Email:", "@"
+- If a field is not found in the visible text, use null (not "Unknown")
 - Return ONLY valid JSON, no markdown or explanation`;
 
         const completion = await cerebras.chat.completions.create({
             messages: [{ role: 'user', content: prompt }],
             model: 'llama3.1-8b',
-            temperature: 0.1, // Low temperature for precise extraction
+            temperature: 0.05, // Very low temperature for precise extraction
             max_completion_tokens: 500
         });
 
