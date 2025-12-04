@@ -52,26 +52,58 @@ export async function uploadReferralFile(
   formData: FormData
 ): Promise<{ success: boolean; message?: string; data?: unknown }> {
   try {
-    const response = await fetch("http://139.180.220.93:3001/extract", {
+    // First upload to backend to get document ID
+    const uploadResponse = await fetch(`${process.env.BACKEND_BASE}/upload`, {
       method: "POST",
       body: formData,
     });
 
-    if (!response.ok) {
+    if (!uploadResponse.ok) {
       return {
         success: false,
-        message: `Upload failed: ${response.statusText}`,
+        message: `Upload failed: ${uploadResponse.statusText}`,
       };
     }
 
-    const result = await response.json();
+    const uploadResult = await uploadResponse.json();
+    if (!uploadResult.success) {
+      return {
+        success: false,
+        message: uploadResult.error?.message || "Upload failed",
+      };
+    }
 
-    console.log(result);
-    
+    const documentId = uploadResult.data.id;
 
+    // Then extract data using backend endpoint
+    const extractResponse = await fetch(`${process.env.BACKEND_BASE}/extract`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: documentId }),
+    });
+
+    if (!extractResponse.ok) {
+      return {
+        success: false,
+        message: `Extraction failed: ${extractResponse.statusText}`,
+      };
+    }
+
+    const extractResult = await extractResponse.json();
+    if (!extractResult.success) {
+      return {
+        success: false,
+        message: extractResult.error?.message || "Extraction failed",
+      };
+    }
+
+    // Return combined result with documentId
     return {
       success: true,
-      data: result?.data,
+      data: {
+        ...extractResult.data,
+        documentId,
+      },
     };
   } catch (error) {
     return {
@@ -81,16 +113,25 @@ export async function uploadReferralFile(
   }
 }
 
-export const orchestrate = async (patientData: {
-  patientName: string;
-  referralReason: string;
-  insuranceProvider: string;
+export const orchestrate = async (extractedData: {
+  patientFirstName: string;
+  patientLastName: string;
+  patientEmail?: string | null;
+  patientPhoneNumber?: string | null;
+  reason: string;
+  payer: string;
+  specialty?: string;
+  documentId?: string;
 }) => {
   try {
     const response = await fetch(`${process.env.BACKEND_BASE}/orchestrate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(patientData),
+      body: JSON.stringify({
+        referralData: extractedData,
+        autoSchedule: true,
+        sendNotifications: true
+      }),
     });
 
     if (!response.ok) {

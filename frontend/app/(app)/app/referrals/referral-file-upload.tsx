@@ -22,6 +22,7 @@ export const ReferralFileUpload = () => {
   const [uploadedFile, setUploadedFile] = React.useState<UploadedFile | null>(
     null
   );
+  const [extractedData, setExtractedData] = React.useState<any>(null);
 
   const {
     uploadMutation,
@@ -33,10 +34,21 @@ export const ReferralFileUpload = () => {
 
   const handleFormSubmit = React.useCallback(
     (data: ExtractionFormData) => {
-      orchestrateMutation.mutate(data);
+      if (!extractedData) {
+        console.error("No extracted data available");
+        return;
+      }
+      orchestrateMutation.mutate({ extractedData, formData: data });
     },
-    [orchestrateMutation]
+    [orchestrateMutation, extractedData]
   );
+
+  // Set extracted data when upload succeeds
+  React.useEffect(() => {
+    if (uploadMutation.isSuccess && uploadMutation.data) {
+      setExtractedData(uploadMutation.data.data);
+    }
+  }, [uploadMutation.isSuccess, uploadMutation.data]);
 
   const onDrop = React.useCallback(
     (acceptedFiles: File[]) => {
@@ -65,6 +77,7 @@ export const ReferralFileUpload = () => {
 
   const removeFile = React.useCallback(() => {
     setUploadedFile(null);
+    setExtractedData(null);
     resetAll();
   }, [resetAll]);
 

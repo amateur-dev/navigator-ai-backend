@@ -164,14 +164,25 @@ export const useReferralUpload = () => {
   const orchestrateMutation = useMutation<
     OrchestrationResponse,
     Error,
-    ExtractionFormData
+    {
+      extractedData: any;
+      formData: ExtractionFormData;
+    }
   >({
-    mutationFn: async (patientData: ExtractionFormData) => {
-      const result = await orchestrate({
-        patientName: patientData.patientName,
-        referralReason: patientData.referralReason,
-        insuranceProvider: patientData.insuranceProvider,
-      });
+    mutationFn: async ({ extractedData, formData }) => {
+      // Use extracted data for orchestration, but merge with any form overrides
+      const orchestrationData = {
+        patientFirstName: extractedData.patientFirstName || formData.patientName.split(' ')[0],
+        patientLastName: extractedData.patientLastName || formData.patientName.split(' ').slice(1).join(' '),
+        patientEmail: extractedData.patientEmail,
+        patientPhoneNumber: extractedData.patientPhoneNumber,
+        reason: formData.referralReason,
+        payer: formData.insuranceProvider,
+        specialty: extractedData.specialty,
+        documentId: extractedData.documentId,
+      };
+
+      const result = await orchestrate(orchestrationData);
 
       if (!result.success) {
         throw new Error(result.message || "Orchestration failed");
