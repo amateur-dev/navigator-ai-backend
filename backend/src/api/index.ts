@@ -565,6 +565,33 @@ app.post('/orchestrate', async (c) => {
           email: !!patientEmail,
           sms: !!patientPhoneNumber
         },
+        notifications: patientEmail || patientPhoneNumber ? {
+          sms: patientPhoneNumber ? {
+            to: patientPhoneNumber,
+            message: `Hi ${patientFirstName} ${patientLastName}! Your ${specialty || 'medical'} appointment with ${selectedSpecialist?.name || providerName || 'Dr. Smith'} is confirmed for ${new Date(sanitizedAppointmentDate).toLocaleDateString()} at 10:00 AM at Downtown Medical Center. Questions? Call (555) 123-4567.`,
+            length: 0 // Would calculate in real implementation
+          } : undefined,
+          email: patientEmail ? {
+            to: patientEmail,
+            subject: `Appointment Confirmed - ${selectedSpecialist?.name || providerName || 'Dr. Smith'}`,
+            body: `Dear ${patientFirstName} ${patientLastName},
+
+Your appointment has been successfully confirmed!
+
+APPOINTMENT DETAILS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Doctor:        ${selectedSpecialist?.name || providerName || 'Dr. Smith'}
+Specialty:     ${specialty || 'General Practice'}
+Date & Time:   ${new Date(sanitizedAppointmentDate).toLocaleDateString()} at 10:00 AM
+Location:      Downtown Medical Center
+Address:       123 Main St, New York, NY 10001
+
+We look forward to seeing you!
+
+Best regards,
+Downtown Medical Center Team`
+          } : undefined
+        } : undefined,
         estimatedCompletionTime: new Date().toISOString()
       },
       message: 'Referral orchestration completed successfully'

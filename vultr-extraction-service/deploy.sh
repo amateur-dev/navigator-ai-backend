@@ -40,12 +40,12 @@ echo "✅ Package created"
 
 # Copy files to server
 echo "📤 Uploading to Vultr server..."
-scp deployment.tar.gz $SSH_USER@$SERVER_IP:/tmp/
+sshpass -p "$VULTR_ROOT_PASSWORD" scp deployment.tar.gz $SSH_USER@$SERVER_IP:/tmp/
 echo "✅ Files uploaded"
 
 # SSH and setup
 echo "🔧 Setting up environment on Vultr..."
-ssh $SSH_USER@$SERVER_IP << EOF
+sshpass -p "$VULTR_ROOT_PASSWORD" ssh $SSH_USER@$SERVER_IP << EOF
 set -e
 
 # Create app directory
