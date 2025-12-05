@@ -86,6 +86,7 @@ export const orchestrate = async (patientData: {
   insuranceProvider: string;
   patientEmail: string;
   patientPhoneNumber: string;
+  payer: string;
 }) => {
   try {
     console.log(JSON.stringify(patientData, null, 2));

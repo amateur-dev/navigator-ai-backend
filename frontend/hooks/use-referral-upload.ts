@@ -180,11 +180,8 @@ export const useReferralUpload = () => {
   >({
     mutationFn: async (patientData: ExtractionFormData) => {
       const result = await orchestrate({
-        patientName: patientData.patientName,
-        referralReason: patientData.referralReason,
-        insuranceProvider: patientData.insuranceProvider,
-        patientEmail: patientData.patientEmail,
-        patientPhoneNumber: patientData.patientPhoneNumber,
+        ...patientData,
+        payer: patientData.insuranceProvider,
       });
 
       if (!result.success) {
