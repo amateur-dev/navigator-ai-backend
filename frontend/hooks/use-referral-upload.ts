@@ -3,13 +3,15 @@ import {
   orchestrate,
   uploadReferralFile,
 } from "@/lib/actions/referrals";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import React from "react";
 import { toast } from "sonner";
 
 interface ExtractionFormData {
   patientName: string;
   dateOfBirth: string;
+  patientPhoneNumber: string;
+  patientEmail: string;
   referralReason: string;
   insuranceProvider: string;
 }
@@ -19,6 +21,8 @@ interface ExtractionResponse {
   data?: {
     patientName?: string;
     dateOfBirth?: string;
+    patientPhoneNumber?: string;
+    patientEmail?: string;
     referralReason?: string;
     insuranceProvider?: string;
   };
@@ -39,6 +43,8 @@ interface OrchestrationResponse {
     availableSlots?: string[];
     referralId?: string;
     insuranceStatus?: string;
+    patientEmail?: string;
+    patientPhoneNumber?: string;
   };
   message?: string;
 }
@@ -70,6 +76,7 @@ interface ConfirmationResponse {
 }
 
 export const useReferralUpload = () => {
+  const queryClient = useQueryClient();
   const [orchestrationData, setOrchestrationData] =
     React.useState<OrchestrationResponse | null>(null);
 
@@ -85,7 +92,7 @@ export const useReferralUpload = () => {
 
       return result as ExtractionResponse;
     },
-    onSuccess: (data, file) => {
+    onSuccess: (_data, file) => {
       toast.success(`${file.name} uploaded and extracted successfully`);
     },
     onError: (error: Error, file) => {
@@ -102,6 +109,8 @@ export const useReferralUpload = () => {
     }
   >({
     mutationFn: async ({ orchestrationData, patientData }) => {
+      console.log({ orchestrationData });
+
       const doctorMatch = orchestrationData.data;
       if (!doctorMatch) {
         throw new Error("No orchestration data available");
@@ -111,10 +120,7 @@ export const useReferralUpload = () => {
       let appointmentDate: string;
       let appointmentTime: string;
 
-      if (
-        doctorMatch.availableSlots &&
-        doctorMatch.availableSlots.length > 0
-      ) {
+      if (doctorMatch.availableSlots && doctorMatch.availableSlots.length > 0) {
         const dateObj = new Date(doctorMatch.availableSlots[0]);
         appointmentDate = dateObj.toISOString().split("T")[0];
         appointmentTime = dateObj.toLocaleTimeString("en-US", {
@@ -128,18 +134,21 @@ export const useReferralUpload = () => {
         appointmentTime = "10:00 AM";
       }
 
-      // Generate patient email and phone
-      const patientEmail = `${patientData.patientName
-        .toLowerCase()
-        .replace(/\s+/g, ".")}@example.com`;
-      const patientPhone = "+1-555-0100";
+      // Validate required fields before confirmation
+      if (!patientData.patientName || !doctorMatch.assignedDoctor) {
+        throw new Error(
+          !patientData.patientName
+            ? "Patient name is required"
+            : "Doctor assignment is required. Please ensure orchestration completed successfully."
+        );
+      }
 
       const confirmPayload = {
         referralId: doctorMatch.referralId || "",
         patientName: patientData.patientName,
-        patientEmail,
-        patientPhone,
-        doctorName: doctorMatch.assignedDoctor || "",
+        patientEmail: patientData.patientEmail,
+        patientPhone: patientData.patientPhoneNumber,
+        doctorName: doctorMatch.assignedDoctor,
         specialty: doctorMatch.specialist || "",
         appointmentDate,
         appointmentTime,
@@ -154,35 +163,29 @@ export const useReferralUpload = () => {
       return result.data as ConfirmationResponse;
     },
     onSuccess: () => {
-      toast.success("Appointment confirmed successfully!");
+      // Toast will be shown after orchestration progress completes
+      // Refetch referrals table data
+      queryClient.invalidateQueries({ queryKey: ["referrals"] });
     },
     onError: (error: Error) => {
-      toast.error(`Confirmation failed: ${error.message}`);
+      // Error message already contains context, don't double-wrap
+      toast.error(error.message);
     },
   });
 
   const orchestrateMutation = useMutation<
     OrchestrationResponse,
     Error,
-    {
-      extractedData: any;
-      formData: ExtractionFormData;
-    }
+    ExtractionFormData
   >({
-    mutationFn: async ({ extractedData, formData }) => {
-      // Use extracted data for orchestration, but merge with any form overrides
-      const orchestrationData = {
-        patientFirstName: extractedData.patientFirstName || formData.patientName.split(' ')[0],
-        patientLastName: extractedData.patientLastName || formData.patientName.split(' ').slice(1).join(' '),
-        patientEmail: extractedData.patientEmail,
-        patientPhoneNumber: extractedData.patientPhoneNumber,
-        reason: formData.referralReason,
-        payer: formData.insuranceProvider,
-        specialty: extractedData.specialty,
-        documentId: extractedData.documentId,
-      };
-
-      const result = await orchestrate(orchestrationData);
+    mutationFn: async (patientData: ExtractionFormData) => {
+      const result = await orchestrate({
+        patientName: patientData.patientName,
+        referralReason: patientData.referralReason,
+        insuranceProvider: patientData.insuranceProvider,
+        patientEmail: patientData.patientEmail,
+        patientPhoneNumber: patientData.patientPhoneNumber,
+      });
 
       if (!result.success) {
         throw new Error(result.message || "Orchestration failed");
@@ -191,11 +194,14 @@ export const useReferralUpload = () => {
       return result as OrchestrationResponse;
     },
     onSuccess: (data, patientData) => {
-      toast.success(
-        `Referral successfully created and confirmed with ${data.data?.assignedDoctor || "specialist"}`
-      );
+      // Toast will be shown when progress step completes
       setOrchestrationData(data);
-      // Orchestration already handles confirmation - no need for separate confirm step
+
+      // Automatically trigger confirmation
+      confirmMutation.mutate({
+        orchestrationData: data,
+        patientData,
+      });
     },
     onError: (error: Error) => {
       toast.error(`Orchestration failed: ${error.message}`);
@@ -206,13 +212,14 @@ export const useReferralUpload = () => {
     setOrchestrationData(null);
     uploadMutation.reset();
     orchestrateMutation.reset();
-  }, [uploadMutation, orchestrateMutation]);
+    confirmMutation.reset();
+  }, [uploadMutation, orchestrateMutation, confirmMutation]);
 
   return {
     uploadMutation,
     orchestrateMutation,
+    confirmMutation,
     orchestrationData,
     resetAll,
   };
 };
-

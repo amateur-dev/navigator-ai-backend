@@ -52,58 +52,25 @@ export async function uploadReferralFile(
   formData: FormData
 ): Promise<{ success: boolean; message?: string; data?: unknown }> {
   try {
-    // First upload to backend to get document ID
-    const uploadResponse = await fetch(`${process.env.BACKEND_BASE}/upload`, {
+    const response = await fetch("http://139.180.220.93:3001/extract", {
       method: "POST",
       body: formData,
     });
 
-    if (!uploadResponse.ok) {
+    if (!response.ok) {
       return {
         success: false,
-        message: `Upload failed: ${uploadResponse.statusText}`,
+        message: `Upload failed: ${response.statusText}`,
       };
     }
 
-    const uploadResult = await uploadResponse.json();
-    if (!uploadResult.success) {
-      return {
-        success: false,
-        message: uploadResult.error?.message || "Upload failed",
-      };
-    }
+    const result = await response.json();
 
-    const documentId = uploadResult.data.id;
+    console.log(result);
 
-    // Then extract data using backend endpoint
-    const extractResponse = await fetch(`${process.env.BACKEND_BASE}/extract`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id: documentId }),
-    });
-
-    if (!extractResponse.ok) {
-      return {
-        success: false,
-        message: `Extraction failed: ${extractResponse.statusText}`,
-      };
-    }
-
-    const extractResult = await extractResponse.json();
-    if (!extractResult.success) {
-      return {
-        success: false,
-        message: extractResult.error?.message || "Extraction failed",
-      };
-    }
-
-    // Return combined result with documentId
     return {
       success: true,
-      data: {
-        ...extractResult.data,
-        documentId,
-      },
+      data: result?.data,
     };
   } catch (error) {
     return {
@@ -113,25 +80,20 @@ export async function uploadReferralFile(
   }
 }
 
-export const orchestrate = async (extractedData: {
-  patientFirstName: string;
-  patientLastName: string;
-  patientEmail?: string | null;
-  patientPhoneNumber?: string | null;
-  reason: string;
-  payer: string;
-  specialty?: string;
-  documentId?: string;
+export const orchestrate = async (patientData: {
+  patientName: string;
+  referralReason: string;
+  insuranceProvider: string;
+  patientEmail: string;
+  patientPhoneNumber: string;
 }) => {
   try {
+    console.log(JSON.stringify(patientData, null, 2));
+
     const response = await fetch(`${process.env.BACKEND_BASE}/orchestrate`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        referralData: extractedData,
-        autoSchedule: true,
-        sendNotifications: true
-      }),
+      body: JSON.stringify(patientData),
     });
 
     if (!response.ok) {
@@ -142,11 +104,16 @@ export const orchestrate = async (extractedData: {
     }
 
     const result = await response.json();
+
+    console.log("/orchestrate returned");
+    console.log(result);
     return {
       success: true,
       data: result?.data,
     };
   } catch (error) {
+    console.log("/orchestrate returned");
+    console.log(error);
     return {
       success: false,
       message: error instanceof Error ? error.message : "Orchestration failed",
@@ -171,14 +138,18 @@ export const confirm = async (confirmData: {
       body: JSON.stringify(confirmData),
     });
 
+    const result = await response.json();
+
     if (!response.ok) {
+      // Backend returns error in 'error' field for 400/500 errors
+      const errorMessage =
+        result?.error || result?.message || response.statusText;
       return {
         success: false,
-        message: `Confirmation failed: ${response.statusText}`,
+        message: errorMessage,
       };
     }
 
-    const result = await response.json();
     return {
       success: true,
       data: result,

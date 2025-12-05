@@ -9,9 +9,9 @@ app.get('/ping', (req, res) => {
     res.send('pong');
 });
 
-import multer from 'multer';
-import Raindrop from '@liquidmetal-ai/lm-raindrop';
 import fs from 'fs';
+import Raindrop from '@liquidmetal-ai/lm-raindrop';
+import multer from 'multer';
 // NOTE: mocked API responses removed per request. Only `specialists` (doctors) remain mocked.
 
 const upload = multer({ dest: 'uploads/' });
@@ -229,9 +229,10 @@ app.post('/seed', (req, res) => {
 
 app.post('/orchestrate', async (req, res) => {
     try {
-        const { referralData } = req.body;
-
-        if (!referralData) {
+        // Accept both { referralData: {...} } and flat object formats
+        const rawData = req.body.referralData || req.body;
+        
+        if (!rawData) {
             return res.status(400).json({ 
                 success: false, 
                 error: {
@@ -242,9 +243,18 @@ app.post('/orchestrate', async (req, res) => {
             });
         }
 
+        // Handle patientName -> patientFirstName/patientLastName conversion
+        let patientFirstName = rawData.patientFirstName;
+        let patientLastName = rawData.patientLastName;
+        
+        // If patientName is provided, split it into first and last name
+        if (rawData.patientName && !patientFirstName && !patientLastName) {
+            const nameParts = rawData.patientName.trim().split(/\s+/);
+            patientFirstName = nameParts[0] || '';
+            patientLastName = nameParts.slice(1).join(' ') || '';
+        }
+
         const {
-            patientFirstName,
-            patientLastName,
             patientEmail,
             patientPhoneNumber,
             age,
@@ -256,8 +266,15 @@ app.post('/orchestrate', async (req, res) => {
             referralDate,
             providerName,
             facilityName,
-            reason
-        } = referralData;
+            reason,
+            referralReason,
+            insuranceProvider
+        } = rawData;
+
+        // Use referralReason if reason is not provided
+        const finalReason = reason || referralReason || '';
+        // Use insuranceProvider if payer is not provided
+        const finalPayer = payer || insuranceProvider;
 
         // Validate required fields
         if (!patientFirstName || !patientLastName) {
@@ -265,13 +282,13 @@ app.post('/orchestrate', async (req, res) => {
                 success: false,
                 error: {
                     code: 'MISSING_REQUIRED_FIELDS',
-                    message: 'patientFirstName and patientLastName are required',
+                    message: 'patientFirstName and patientLastName (or patientName) are required',
                     statusCode: 400
                 }
             });
         }
 
-        const specialty = requestedSpecialty || determineSpecialty(reason || '');
+        const specialty = requestedSpecialty || determineSpecialty(finalReason);
         // Ensure we have default specialists if array is empty
         if (specialists.length === 0) {
             specialists = [
@@ -293,14 +310,14 @@ app.post('/orchestrate', async (req, res) => {
             patientEmail: patientEmail || null,
             age,
             specialty,
-            payer,
+            payer: finalPayer,
             plan,
             urgency,
             appointmentDate: appointmentDate || demoAppointmentDate.toISOString(),
             referralDate: referralDate || new Date().toISOString(),
             providerName: providerName || specialist.name,
             facilityName: facilityName || 'Downtown Medical Center',
-            reason,
+            reason: finalReason,
             status: 'Confirmed', // Auto-progress to confirmed for demo
             noShowRisk: Math.floor(Math.random() * 50)
         };
@@ -324,7 +341,7 @@ app.post('/orchestrate', async (req, res) => {
                 type: 'system',
                 timestamp: new Date(now.getTime() + 5000).toISOString(),
                 user: 'system',
-                description: `Eligibility verified with ${payer || 'insurance provider'}`
+                description: `Eligibility verified with ${finalPayer || 'insurance provider'}`
             },
             {
                 id: `log-${Date.now()}-3`,
@@ -383,6 +400,8 @@ app.post('/orchestrate', async (req, res) => {
                 referralId: newReferral.id,
                 status: 'Confirmed',
                 orchestrationId: `orch-${Date.now()}`,
+                specialist: specialty,
+                assignedDoctor: specialist.name,
                 completedSteps: [
                     'Referral Created',
                     'Eligibility Verified',
@@ -624,9 +643,9 @@ app.get('/metrics', (req, res) => {
     }
 });
 
+import path from 'path';
 // ESM replacement for require.main === module
 import { fileURLToPath } from 'url';
-import path from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

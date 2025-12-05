@@ -1,26 +1,22 @@
-"use client";
+'use client'
 
-import { Skeleton } from "@/components/ui";
-import { useMetrics } from "@/hooks/use-metrics";
-import { MetricsOverview } from "./metrics-overview";
-import { ProviderStats } from "./provider-stats";
+import { Skeleton } from '@/components/ui'
+import { useMetrics } from '@/hooks/use-metrics'
+import { MetricsOverview } from './metrics-overview'
+import { ProviderStats } from './provider-stats'
 
 function DashboardContent() {
-  const { data: metrics, isLoading, error } = useMetrics();
+  const { data: metrics, isLoading, error } = useMetrics()
 
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-2">
-          <p className="text-lg font-semibold text-destructive">
-            Failed to load metrics
-          </p>
-          <p className="text-sm text-muted-foreground">
-            Please try refreshing the page
-          </p>
+          <p className="text-lg font-semibold text-destructive">Failed to load metrics</p>
+          <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
         </div>
       </div>
-    );
+    )
   }
 
   if (isLoading || !metrics?.data) {
@@ -42,17 +38,17 @@ function DashboardContent() {
           <Skeleton className="h-[250px]" />
         </div>
       </div>
-    );
+    )
   }
 
-  const { overview, providers } = metrics.data;
+  const { overview, providers } = metrics.data
 
   return (
     <div className="space-y-6">
       <MetricsOverview data={overview} />
       <ProviderStats data={providers} />
     </div>
-  );
+  )
 }
 
 export default function DashboardPage() {
@@ -73,5 +69,5 @@ export default function DashboardPage() {
         <DashboardContent />
       </main>
     </div>
-  );
+  )
 }

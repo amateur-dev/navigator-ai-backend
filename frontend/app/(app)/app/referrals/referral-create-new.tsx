@@ -1,5 +1,7 @@
-"use client";
+'use client'
 
+import { Plus } from 'lucide-react'
+import { useQueryState } from 'nuqs'
 import {
   Button,
   Drawer,
@@ -7,26 +9,20 @@ import {
   DrawerDescription,
   DrawerHeader,
   DrawerTitle,
-  DrawerTrigger,
-} from "@/components/ui";
-import { Plus } from "lucide-react";
-import { useQueryState } from "nuqs";
-import { ReferralFileUpload } from "./referral-file-upload";
+  DrawerTrigger
+} from '@/components/ui'
+import { ReferralFlowWithProgress } from './referral-flow-with-progress'
 
 export const ReferralCreateNew = () => {
-  const [action, setAction] = useQueryState("action");
+  const [action, setAction] = useQueryState('action')
 
   return (
     <Drawer
-      open={action === "create-referral"}
-      onOpenChange={(open) => setAction(open ? "create-referral" : null)}
+      open={action === 'create-referral'}
+      onOpenChange={(open) => setAction(open ? 'create-referral' : null)}
     >
       <DrawerTrigger asChild>
-        <Button
-          variant="default"
-          className="h-10"
-          onClick={() => setAction("create-referral")}
-        >
+        <Button variant="default" className="h-10" onClick={() => setAction('create-referral')}>
           <span>New Referral</span>
           <Plus className="size-4" strokeWidth={1.8} />
         </Button>
@@ -34,12 +30,10 @@ export const ReferralCreateNew = () => {
       <DrawerContent className="h-screen px-10 pb-6">
         <DrawerHeader className="items-start gap-0!">
           <DrawerTitle>Create New Referral</DrawerTitle>
-          <DrawerDescription>
-            Upload patient's referral document to get started
-          </DrawerDescription>
+          <DrawerDescription>Upload patient's referral document to get started</DrawerDescription>
         </DrawerHeader>
-        <ReferralFileUpload />
+        <ReferralFlowWithProgress />
       </DrawerContent>
     </Drawer>
-  );
-};
+  )
+}

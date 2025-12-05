@@ -1,14 +1,14 @@
-"use client";
+'use client'
 
-import { Card, Progress, Separator } from "@/components/ui";
-import { Building2, Users } from "lucide-react";
+import { Building2, Users } from 'lucide-react'
+import { Card, Progress, Separator } from '@/components/ui'
 
 interface ProviderStatsProps {
   data: {
-    totalSpecialists: number;
-    availableSpecialists: number;
-    utilizationRate: number;
-  };
+    totalSpecialists: number
+    availableSpecialists: number
+    utilizationRate: number
+  }
 }
 
 export const ProviderStats = ({ data }: ProviderStatsProps) => {
@@ -35,9 +35,7 @@ export const ProviderStats = ({ data }: ProviderStatsProps) => {
               <Building2 className="size-4 text-muted-foreground" />
               <span className="text-sm font-medium">Available</span>
             </div>
-            <span className="text-sm font-medium">
-              {data.availableSpecialists}
-            </span>
+            <span className="text-sm font-medium">{data.availableSpecialists}</span>
           </div>
           <Separator />
         </div>
@@ -50,13 +48,13 @@ export const ProviderStats = ({ data }: ProviderStatsProps) => {
           <Progress value={data.utilizationRate} className="h-2" />
           <p className="text-xs text-muted-foreground">
             {data.utilizationRate >= 80
-              ? "High utilization - Consider expanding network"
+              ? 'High utilization - Consider expanding network'
               : data.utilizationRate >= 60
-              ? "Good utilization"
-              : "Low utilization"}
+                ? 'Good utilization'
+                : 'Low utilization'}
           </p>
         </div>
       </div>
     </Card>
-  );
-};
+  )
+}

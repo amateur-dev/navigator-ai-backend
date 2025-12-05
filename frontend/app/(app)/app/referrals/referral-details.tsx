@@ -46,7 +46,7 @@ export const ReferralDetails = ({ data }: ReferralDetailsProps) => {
             <div className="flex justify-between items-center">
               <span className="text-secondary-foreground">Urgency</span>
               <Badge variant={getUrgencyColor(data.urgency)} className="text-xs pt-1 font-medium">
-                {data.urgency.toUpperCase()}
+                {data?.urgency?.toUpperCase()}
               </Badge>
             </div>
             <div className="flex justify-between items-center">
@@ -101,10 +101,10 @@ export const ReferralDetails = ({ data }: ReferralDetailsProps) => {
 
       <div className="w-full border overflow-y-auto p-8 rounded-2xl corner-smooth flex flex-col bg-background">
         <div className="flex items-start gap-0 relative pt-2 pb-9">
-          {data.steps.map((step, index) => (
-            <div key={step.id} className="flex flex-col items-center flex-1 relative">
+          {data?.steps?.map((step, index) => (
+            <div key={step?.id} className="flex flex-col items-center flex-1 relative">
               <div className="relative z-10 mb-3">{getStepIcon(step.status)}</div>
-              {index < data.steps.length - 1 && (
+              {index < data?.steps?.length - 1 && (
                 <div
                   className={`absolute left-1/2 top-4 h-0.5 w-full ${
                     step.status === 'completed' ? 'bg-default' : 'bg-gray-200'
@@ -112,11 +112,11 @@ export const ReferralDetails = ({ data }: ReferralDetailsProps) => {
                 />
               )}
               <div className="text-center">
-                <div className="font-medium text-sm">{step.label}</div>
+                <div className="font-medium text-sm">{step?.label}</div>
                 <div className="text-xs text-muted-foreground mt-0.5">{step.description}</div>
-                {step.completedAt && (
+                {step?.completedAt && (
                   <div className="text-xs text-muted-foreground mt-1">
-                    {formatDate(step.completedAt)}
+                    {formatDate(step?.completedAt)}
                   </div>
                 )}
               </div>
