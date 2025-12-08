@@ -45,6 +45,12 @@ interface OrchestrationResponse {
     insuranceStatus?: string;
     patientEmail?: string;
     patientPhoneNumber?: string;
+    appointmentDetails?: {
+      providerName?: string;
+      facilityName?: string;
+      facilityAddress?: string;
+      appointmentDate?: string;
+    };
   };
   message?: string;
 }
@@ -109,8 +115,6 @@ export const useReferralUpload = () => {
     }
   >({
     mutationFn: async ({ orchestrationData, patientData }) => {
-      console.log({ orchestrationData });
-
       const doctorMatch = orchestrationData.data;
       if (!doctorMatch) {
         throw new Error("No orchestration data available");
@@ -135,7 +139,10 @@ export const useReferralUpload = () => {
       }
 
       // Validate required fields before confirmation
-      if (!patientData.patientName || !doctorMatch.assignedDoctor) {
+      if (
+        !patientData.patientName ||
+        !doctorMatch.appointmentDetails?.providerName
+      ) {
         throw new Error(
           !patientData.patientName
             ? "Patient name is required"
@@ -148,7 +155,7 @@ export const useReferralUpload = () => {
         patientName: patientData.patientName,
         patientEmail: patientData.patientEmail,
         patientPhone: patientData.patientPhoneNumber,
-        doctorName: doctorMatch.assignedDoctor,
+        doctorName: doctorMatch.appointmentDetails?.providerName || "Unknown",
         specialty: doctorMatch.specialist || "",
         appointmentDate,
         appointmentTime,
