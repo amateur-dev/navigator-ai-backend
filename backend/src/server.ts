@@ -191,14 +191,38 @@ function determineSpecialty(reason: string): string {
 
 app.post('/seed', (req, res) => {
     // support body { clearReferralsOnly: true } to remove only referrals and preserve specialists
-    const { clearReferralsOnly } = req.body || {};
-    
+    const { clearReferralsOnly, referrals: newReferrals, logs } = req.body || {};
+
+    // If referral data is provided, seed it instead of clearing
+    if (newReferrals && Array.isArray(newReferrals)) {
+        // Clear existing data first
+        referrals = [];
+        Object.keys(referralLogs).forEach(key => delete referralLogs[key]);
+
+        // Load new referrals
+        referrals.push(...newReferrals);
+
+        // Load logs if provided
+        if (logs && typeof logs === 'object') {
+            Object.assign(referralLogs, logs);
+        }
+
+        return res.json({
+            success: true,
+            message: `Seeded ${newReferrals.length} referrals successfully`,
+            data: {
+                referralsSeeded: newReferrals.length,
+                logsSeeded: logs ? Object.keys(logs).length : 0
+            }
+        });
+    }
+
     if (clearReferralsOnly) {
         const clearedCount = referrals.length;
         referrals = [];
         // Clear associated logs as well
         Object.keys(referralLogs).forEach(key => delete referralLogs[key]);
-        return res.json({ 
+        return res.json({
             success: true,
             message: `Referrals cleared (${clearedCount} removed, specialists preserved)`,
             data: {
@@ -214,8 +238,8 @@ app.post('/seed', (req, res) => {
     referrals = [];
     specialists = [];
     Object.keys(referralLogs).forEach(key => delete referralLogs[key]);
-    
-    res.json({ 
+
+    res.json({
         success: true,
         message: 'Database seeded (all referrals and specialists cleared)',
         data: {
@@ -224,6 +248,55 @@ app.post('/seed', (req, res) => {
             logsCleared: Object.keys(referralLogs).length
         }
     });
+});
+
+
+app.post('/seed-referrals', (req, res) => {
+    try {
+        const { referrals: newReferrals, logs } = req.body;
+
+        if (!Array.isArray(newReferrals)) {
+            return res.status(400).json({
+                success: false,
+                error: {
+                    code: 'INVALID_DATA',
+                    message: 'referrals must be an array',
+                    statusCode: 400
+                }
+            });
+        }
+
+        // Clear existing data first
+        referrals = [];
+        Object.keys(referralLogs).forEach(key => delete referralLogs[key]);
+
+        // Load new referrals
+        referrals.push(...newReferrals);
+
+        // Load logs if provided
+        if (logs && typeof logs === 'object') {
+            Object.assign(referralLogs, logs);
+        }
+
+        res.json({
+            success: true,
+            message: `Seeded ${newReferrals.length} referrals successfully`,
+            data: {
+                referralsSeeded: newReferrals.length,
+                logsSeeded: logs ? Object.keys(logs).length : 0
+            }
+        });
+    } catch (error) {
+        console.error('Seed referrals error:', error);
+        res.status(500).json({
+            success: false,
+            error: {
+                code: 'SEED_FAILED',
+                message: 'Failed to seed referrals',
+                statusCode: 500
+            }
+        });
+    }
 });
 
 
