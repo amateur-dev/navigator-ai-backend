@@ -68,6 +68,8 @@ Unlike existing referral management systems that cost $100K+ in enterprise licen
 
 ## 🎬 Live Demo
 
+**🎥 Demo Video:** [Watch the full demo](https://youtu.be/mg0nwrgrbw0)
+
 **Try it now:** 
 - **Backend API:** https://svc-01katb1a5pyby9ds4qw3b2eqkk.01ka4p71jdecn1j7gq8bb23n03.lmapp.run
 - **Vultr Service:** http://139.180.220.93:3001
@@ -77,6 +79,13 @@ Unlike existing referral management systems that cost $100K+ in enterprise licen
 - Patient Portal: [link]
 
 **Test Documents:** Sample referral PDFs available in `/demo-documents/`
+
+**API Endpoints:**
+- Health Check: `GET /ping`
+- Upload: `POST /upload`
+- Extract: `POST /extract`
+- Orchestrate: `POST /orchestrate`
+- Confirm: `POST /confirm`
 
 **API Endpoints:**
 - Health Check: `GET /ping`
