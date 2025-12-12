@@ -238,6 +238,10 @@ navigator-ai-backend/
 
 ## Contributing
 
+**Hackathon Team:**
+- **Dipesh Sukhani** (dipesh_sukhani) - Backend development, AI integration, deployment
+- **Kasun Peiris** (Kasun Peiris) - Frontend development, UI/UX, project coordination
+
 1. Follow the mono-repo structure
 2. Test locally before committing
 3. Update documentation as needed
